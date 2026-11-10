@@ -81,6 +81,7 @@
         </fieldset>
 
         <button class="primary" type="submit">คำนวณ DC Bias</button>
+        {% if errors and errors.form %}<p class="field-error">{{ errors.form }}</p>{% endif %}
       </form>
     </section>
 
@@ -90,7 +91,7 @@
       {% if result.region != "active" %}
       <div class="warning">
         <strong>คำเตือน:</strong> แบบจำลอง Forward-Active ใช้ไม่ได้กับค่านี้ —
-        วงจรอยู่ในโซน {{ result.region }}
+        วงจรอยู่ในโซน {{ result.region_label }}
         ผลที่แสดงมาจากสมการเชิงเส้นจึงไม่ใช่ผลจำลองที่แม่นยำ
         {% if result.region == "saturation" %}
         (เต็มพิกัด IC(sat) ≈ {{ result.ic_sat }})
@@ -104,7 +105,7 @@
           {% endfor %}
         </tbody>
       </table>
-      <p class="note">โซนการทำงาน: {{ result.region }}</p>
+      <p class="note">โซนการทำงาน: {{ result.region_label }}</p>
     </section>
     {% endif %}
   </main>
