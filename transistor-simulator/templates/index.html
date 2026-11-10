@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BJT DC Bias Simulator — Voltage-Divider Bias</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <h1>BJT DC Bias Simulator</h1>
+      <p>วงจรขยาย Common Emitter · Voltage-Divider Bias · DC Operating Point</p>
+    </header>
+
+    <section class="panel">
+      <h2>ค่าอุปกรณ์ (Component values)</h2>
+      <form method="post" novalidate>
+        <fieldset>
+          <legend>แหล่งจ่าย (Supply)</legend>
+          <div class="field">
+            <label for="vcc">VCC — แรงดันแหล่งจ่าย (V)</label>
+            <input id="vcc" name="vcc" type="text" inputmode="decimal"
+                   placeholder="12" value="{{ values.get('vcc', '') }}" required>
+            {% if errors and errors.vcc %}<p class="field-error">{{ errors.vcc }}</p>{% endif %}
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>ตัวแบ่งแรงดัน (Voltage divider)</legend>
+          <div class="grid">
+            <div class="field">
+              <label for="r1">R1 — จาก VCC ไปขา Base (Ω หรือ kΩ)</label>
+              <input id="r1" name="r1" type="text" inputmode="decimal"
+                     placeholder="100k" value="{{ values.get('r1', '') }}" required>
+              {% if errors and errors.r1 %}<p class="field-error">{{ errors.r1 }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="r2">R2 — จากขา Base ลงกราวด์ (Ω หรือ kΩ)</label>
+              <input id="r2" name="r2" type="text" inputmode="decimal"
+                     placeholder="22k" value="{{ values.get('r2', '') }}" required>
+              {% if errors and errors.r2 %}<p class="field-error">{{ errors.r2 }}</p>{% endif %}
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>โหลด (Load)</legend>
+          <div class="grid">
+            <div class="field">
+              <label for="rc">RC — จาก VCC ไปขา Collector (Ω หรือ kΩ)</label>
+              <input id="rc" name="rc" type="text" inputmode="decimal"
+                     placeholder="2.2k" value="{{ values.get('rc', '') }}" required>
+              {% if errors and errors.rc %}<p class="field-error">{{ errors.rc }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="re">RE — จากขา Emitter ลงกราวด์ (Ω หรือ kΩ)</label>
+              <input id="re" name="re" type="text" inputmode="decimal"
+                     placeholder="1k" value="{{ values.get('re', '') }}" required>
+              {% if errors and errors.re %}<p class="field-error">{{ errors.re }}</p>{% endif %}
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>ตัวทรานซิสเตอร์ (Transistor)</legend>
+          <div class="grid">
+            <div class="field">
+              <label for="beta">β (hFE) — ค่า Gain ของกระแส</label>
+              <input id="beta" name="beta" type="text" inputmode="decimal"
+                     placeholder="100" value="{{ values.get('beta', '') }}" required>
+              {% if errors and errors.beta %}<p class="field-error">{{ errors.beta }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="vbe">VBE — แรงดัน Base-Emitter (V)</label>
+              <input id="vbe" name="vbe" type="text" inputmode="decimal"
+                     value="{{ values.get('vbe', '0.7') }}" required>
+              {% if errors and errors.vbe %}<p class="field-error">{{ errors.vbe }}</p>{% endif %}
+            </div>
+          </div>
+        </fieldset>
+
+        <button class="primary" type="submit">คำนวณ DC Bias</button>
+      </form>
+    </section>
+
+    {% if result %}
+    <section class="panel results">
+      <h2>DC Operating Point</h2>
+      {% if result.region != "active" %}
+      <div class="warning">
+        <strong>คำเตือน:</strong> แบบจำลอง Forward-Active ใช้ไม่ได้กับค่านี้ —
+        วงจรอยู่ในโซน {{ result.region }}
+        ผลที่แสดงมาจากสมการเชิงเส้นจึงไม่ใช่ผลจำลองที่แม่นยำ
+        {% if result.region == "saturation" %}
+        (เต็มพิกัด IC(sat) ≈ {{ result.ic_sat }})
+        {% endif %}
+      </div>
+      {% endif %}
+      <table>
+        <tbody>
+          {% for label, value in result.rows %}
+          <tr><th>{{ label }}</th><td>{{ value }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="note">โซนการทำงาน: {{ result.region }}</p>
+    </section>
+    {% endif %}
+  </main>
+</body>
+</html>
