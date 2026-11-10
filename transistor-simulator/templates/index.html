@@ -1,113 +1,233 @@
 <!doctype html>
-<html lang="th">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BJT DC Bias Simulator — Voltage-Divider Bias</title>
+  <title>Lab 02: BJT DC Bias Web App — ENG29 2121</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <main class="shell">
-    <header class="masthead">
-      <h1>BJT DC Bias Simulator</h1>
-      <p>วงจรขยาย Common Emitter · Voltage-Divider Bias · DC Operating Point</p>
-    </header>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="chip" viewBox="0 0 48 48" role="img" aria-label="Chip icon">
+        <g stroke="#0f6b78" stroke-width="2.4" stroke-linecap="round">
+          <line x1="15" y1="3" x2="15" y2="10"/><line x1="24" y1="3" x2="24" y2="10"/><line x1="33" y1="3" x2="33" y2="10"/>
+          <line x1="15" y1="38" x2="15" y2="45"/><line x1="24" y1="38" x2="24" y2="45"/><line x1="33" y1="38" x2="33" y2="45"/>
+          <line x1="3" y1="15" x2="10" y2="15"/><line x1="3" y1="24" x2="10" y2="24"/><line x1="3" y1="33" x2="10" y2="33"/>
+          <line x1="38" y1="15" x2="45" y2="15"/><line x1="38" y1="24" x2="45" y2="24"/><line x1="38" y1="33" x2="45" y2="33"/>
+        </g>
+        <rect x="10" y="10" width="28" height="28" rx="4" stroke="#0f6b78" stroke-width="2.6" fill="#e4f4f5"/>
+        <rect x="19" y="19" width="10" height="10" fill="#0f6b78"/>
+      </svg>
+      <div>
+        <h1>Lab 02: BJT DC Bias Web App</h1>
+        <p>ENG29 2121 – Common Emitter (Voltage Divider Bias)</p>
+      </div>
+    </div>
+    <div class="course-badge">
+      <span class="badge-icon">&lt;/&gt;</span>
+      <span class="badge-text">Computer Programming for<br>Electrical Engineers</span>
+    </div>
+  </header>
 
-    <section class="panel">
-      <h2>ค่าอุปกรณ์ (Component values)</h2>
+  <main class="layout">
+    <!-- Input Parameters -->
+    <section class="panel panel-input">
+      <h2><span class="icon icon-accent">⚙️</span> Input Parameters</h2>
       <form method="post" novalidate>
-        <fieldset>
-          <legend>แหล่งจ่าย (Supply)</legend>
-          <div class="field">
-            <label for="vcc">VCC — แรงดันแหล่งจ่าย (V)</label>
-            <input id="vcc" name="vcc" type="text" inputmode="decimal"
-                   placeholder="12" value="{{ values.get('vcc', '') }}" required>
-            {% if errors and errors.vcc %}<p class="field-error">{{ errors.vcc }}</p>{% endif %}
+        <div class="field">
+          <label for="vcc">V<sub>CC</sub> (Supply Voltage)</label>
+          <div class="control">
+            <input id="vcc" name="vcc" type="text" inputmode="decimal" placeholder="12"
+                   value="{{ values.get('vcc', '12') }}" required>
+            <select disabled aria-hidden="true"><option>V</option></select>
           </div>
-        </fieldset>
+          {% if errors and errors.vcc %}<p class="field-error">{{ errors.vcc }}</p>{% endif %}
+        </div>
 
-        <fieldset>
-          <legend>ตัวแบ่งแรงดัน (Voltage divider)</legend>
-          <div class="grid">
-            <div class="field">
-              <label for="r1">R1 — จาก VCC ไปขา Base (Ω หรือ kΩ)</label>
-              <input id="r1" name="r1" type="text" inputmode="decimal"
-                     placeholder="100k" value="{{ values.get('r1', '') }}" required>
-              {% if errors and errors.r1 %}<p class="field-error">{{ errors.r1 }}</p>{% endif %}
-            </div>
-            <div class="field">
-              <label for="r2">R2 — จากขา Base ลงกราวด์ (Ω หรือ kΩ)</label>
-              <input id="r2" name="r2" type="text" inputmode="decimal"
-                     placeholder="22k" value="{{ values.get('r2', '') }}" required>
-              {% if errors and errors.r2 %}<p class="field-error">{{ errors.r2 }}</p>{% endif %}
-            </div>
+        <div class="field">
+          <label for="r1">R<sub>1</sub> (Upper Divider)</label>
+          <div class="control">
+            <input id="r1" name="r1" type="text" inputmode="decimal" placeholder="100"
+                   value="{{ values.get('r1', '100') }}" required>
+            <select name="r1_unit" aria-label="R1 unit">
+              <option value="kohm" {{ 'selected' if values.get('r1_unit', 'kohm') == 'kohm' else '' }}>kΩ</option>
+              <option value="ohm" {{ 'selected' if values.get('r1_unit', 'kohm') == 'ohm' else '' }}>Ω</option>
+            </select>
           </div>
-        </fieldset>
+          {% if errors and errors.r1 %}<p class="field-error">{{ errors.r1 }}</p>{% endif %}
+        </div>
 
-        <fieldset>
-          <legend>โหลด (Load)</legend>
-          <div class="grid">
-            <div class="field">
-              <label for="rc">RC — จาก VCC ไปขา Collector (Ω หรือ kΩ)</label>
-              <input id="rc" name="rc" type="text" inputmode="decimal"
-                     placeholder="2.2k" value="{{ values.get('rc', '') }}" required>
-              {% if errors and errors.rc %}<p class="field-error">{{ errors.rc }}</p>{% endif %}
-            </div>
-            <div class="field">
-              <label for="re">RE — จากขา Emitter ลงกราวด์ (Ω หรือ kΩ)</label>
-              <input id="re" name="re" type="text" inputmode="decimal"
-                     placeholder="1k" value="{{ values.get('re', '') }}" required>
-              {% if errors and errors.re %}<p class="field-error">{{ errors.re }}</p>{% endif %}
-            </div>
+        <div class="field">
+          <label for="r2">R<sub>2</sub> (Lower Divider)</label>
+          <div class="control">
+            <input id="r2" name="r2" type="text" inputmode="decimal" placeholder="22"
+                   value="{{ values.get('r2', '22') }}" required>
+            <select name="r2_unit" aria-label="R2 unit">
+              <option value="kohm" {{ 'selected' if values.get('r2_unit', 'kohm') == 'kohm' else '' }}>kΩ</option>
+              <option value="ohm" {{ 'selected' if values.get('r2_unit', 'kohm') == 'ohm' else '' }}>Ω</option>
+            </select>
           </div>
-        </fieldset>
+          {% if errors and errors.r2 %}<p class="field-error">{{ errors.r2 }}</p>{% endif %}
+        </div>
 
-        <fieldset>
-          <legend>ตัวทรานซิสเตอร์ (Transistor)</legend>
-          <div class="grid">
-            <div class="field">
-              <label for="beta">β (hFE) — ค่า Gain ของกระแส</label>
-              <input id="beta" name="beta" type="text" inputmode="decimal"
-                     placeholder="100" value="{{ values.get('beta', '') }}" required>
-              {% if errors and errors.beta %}<p class="field-error">{{ errors.beta }}</p>{% endif %}
-            </div>
-            <div class="field">
-              <label for="vbe">VBE — แรงดัน Base-Emitter (V)</label>
-              <input id="vbe" name="vbe" type="text" inputmode="decimal"
-                     value="{{ values.get('vbe', '0.7') }}" required>
-              {% if errors and errors.vbe %}<p class="field-error">{{ errors.vbe }}</p>{% endif %}
-            </div>
+        <div class="field">
+          <label for="rc">R<sub>C</sub> (Collector Resistor)</label>
+          <div class="control">
+            <input id="rc" name="rc" type="text" inputmode="decimal" placeholder="2.2"
+                   value="{{ values.get('rc', '2.2') }}" required>
+            <select name="rc_unit" aria-label="RC unit">
+              <option value="kohm" {{ 'selected' if values.get('rc_unit', 'kohm') == 'kohm' else '' }}>kΩ</option>
+              <option value="ohm" {{ 'selected' if values.get('rc_unit', 'kohm') == 'ohm' else '' }}>Ω</option>
+            </select>
           </div>
-        </fieldset>
+          {% if errors and errors.rc %}<p class="field-error">{{ errors.rc }}</p>{% endif %}
+        </div>
 
-        <button class="primary" type="submit">คำนวณ DC Bias</button>
+        <div class="field">
+          <label for="re">R<sub>E</sub> (Emitter Resistor)</label>
+          <div class="control">
+            <input id="re" name="re" type="text" inputmode="decimal" placeholder="1"
+                   value="{{ values.get('re', '1') }}" required>
+            <select name="re_unit" aria-label="RE unit">
+              <option value="kohm" {{ 'selected' if values.get('re_unit', 'kohm') == 'kohm' else '' }}>kΩ</option>
+              <option value="ohm" {{ 'selected' if values.get('re_unit', 'kohm') == 'ohm' else '' }}>Ω</option>
+            </select>
+          </div>
+          {% if errors and errors.re %}<p class="field-error">{{ errors.re }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+          <label for="beta">β (Current Gain)</label>
+          <div class="control">
+            <input id="beta" name="beta" type="text" inputmode="decimal" placeholder="100"
+                   value="{{ values.get('beta', '100') }}" required>
+            <span class="unit-note">–</span>
+          </div>
+          {% if errors and errors.beta %}<p class="field-error">{{ errors.beta }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+          <label for="vbe">V<sub>BE</sub> (Base–Emitter Voltage)</label>
+          <div class="control">
+            <input id="vbe" name="vbe" type="text" inputmode="decimal"
+                   value="{{ values.get('vbe', '0.7') }}" required>
+            <select disabled aria-hidden="true"><option>V</option></select>
+          </div>
+          {% if errors and errors.vbe %}<p class="field-error">{{ errors.vbe }}</p>{% endif %}
+        </div>
+
+        <button class="primary" type="submit">🧮 Calculate DC Bias</button>
         {% if errors and errors.form %}<p class="field-error">{{ errors.form }}</p>{% endif %}
       </form>
     </section>
 
-    {% if result %}
-    <section class="panel results">
-      <h2>DC Operating Point</h2>
-      {% if result.region != "active" %}
-      <div class="warning">
-        <strong>คำเตือน:</strong> แบบจำลอง Forward-Active ใช้ไม่ได้กับค่านี้ —
-        วงจรอยู่ในโซน {{ result.region_label }}
-        ผลที่แสดงมาจากสมการเชิงเส้นจึงไม่ใช่ผลจำลองที่แม่นยำ
-        {% if result.region == "saturation" %}
-        (เต็มพิกัด IC(sat) ≈ {{ result.ic_sat }})
-        {% endif %}
+    <!-- Circuit diagram -->
+    <section class="panel panel-circuit">
+      <h2><span class="icon icon-accent">🔗</span> Circuit: Common-Emitter Amplifier</h2>
+      <svg class="schematic" viewBox="0 0 340 330" role="img" aria-label="Voltage-divider bias circuit">
+        <text x="250" y="18" text-anchor="middle" class="t-dim">V<tspan baseline-shift="sub" font-size="10">CC</tspan> = {{ diagram.vcc }}</text>
+        <line x1="85" y1="45" x2="250" y2="45" class="wire"/>
+
+        <line x1="85" y1="45" x2="85" y2="66" class="wire"/>
+        <rect x="72" y="66" width="26" height="56" rx="3" class="comp"/>
+        <text x="62" y="88" text-anchor="end" class="t-name">R<tspan baseline-shift="sub" font-size="10">1</tspan></text>
+        <text x="62" y="106" text-anchor="end" class="t-value">{{ diagram.r1 }}</text>
+        <line x1="85" y1="122" x2="85" y2="160" class="wire"/>
+
+        <rect x="72" y="196" width="26" height="56" rx="3" class="comp"/>
+        <text x="62" y="218" text-anchor="end" class="t-name">R<tspan baseline-shift="sub" font-size="10">2</tspan></text>
+        <text x="62" y="236" text-anchor="end" class="t-value">{{ diagram.r2 }}</text>
+        <line x1="85" y1="160" x2="85" y2="196" class="wire"/>
+        <line x1="85" y1="252" x2="85" y2="292" class="wire"/>
+        <line x1="70" y1="292" x2="100" y2="292" class="wire"/>
+        <line x1="75" y1="297" x2="95" y2="297" class="wire"/>
+        <line x1="80" y1="302" x2="90" y2="302" class="wire"/>
+        <circle cx="85" cy="160" r="4" class="node"/>
+
+        <line x1="250" y1="45" x2="250" y2="55" class="wire"/>
+        <rect x="237" y="55" width="26" height="55" rx="3" class="comp"/>
+        <text x="268" y="77" class="t-name">R<tspan baseline-shift="sub" font-size="10">C</tspan></text>
+        <text x="268" y="95" class="t-value">{{ diagram.rc }}</text>
+        <line x1="250" y1="110" x2="250" y2="110" class="wire"/>
+
+        <circle cx="180" cy="160" r="30" class="comp"/>
+        <line x1="85" y1="160" x2="168" y2="160" class="wire"/>
+        <line x1="163" y1="140" x2="163" y2="180" class="bar"/>
+        <line x1="163" y1="146" x2="205" y2="110" class="wire"/>
+        <line x1="205" y1="110" x2="250" y2="110" class="wire"/>
+        <circle cx="250" cy="110" r="4" class="node"/>
+        <line x1="163" y1="174" x2="200" y2="210" class="wire"/>
+        <polygon points="200,210 185.5,204 190.5,194.5" class="arrow"/>
+        <line x1="200" y1="210" x2="250" y2="210" class="wire"/>
+        <circle cx="250" cy="210" r="4" class="node"/>
+        <text x="180" y="237" text-anchor="middle" class="t-name">Q<tspan baseline-shift="sub" font-size="10">1</tspan></text>
+        <text x="180" y="255" text-anchor="middle" class="t-value">NPN (β = {{ diagram.beta }})</text>
+
+        <rect x="237" y="210" width="26" height="56" rx="3" class="comp"/>
+        <text x="268" y="233" class="t-name">R<tspan baseline-shift="sub" font-size="10">E</tspan></text>
+        <text x="268" y="251" class="t-value">{{ diagram.re }}</text>
+        <line x1="250" y1="266" x2="250" y2="292" class="wire"/>
+        <line x1="235" y1="292" x2="265" y2="292" class="wire"/>
+        <line x1="240" y1="297" x2="260" y2="297" class="wire"/>
+        <line x1="245" y1="302" x2="255" y2="302" class="wire"/>
+      </svg>
+    </section>
+
+    <!-- Results -->
+    <section class="panel panel-results">
+      <h2><span class="icon icon-accent">📊</span> DC Bias Results</h2>
+      {% if not result %}
+      <div class="empty-state">
+        <p>Fill in the component values, then press <strong>Calculate DC Bias</strong>.</p>
+        <p class="muted">VB, VE, VC, VCE, IB, IC and IE will appear here.</p>
       </div>
-      {% endif %}
-      <table>
+      {% else %}
+      <table class="results-table">
         <tbody>
-          {% for label, value in result.rows %}
-          <tr><th>{{ label }}</th><td>{{ value }}</td></tr>
-          {% endfor %}
+          <tr><th>V<sub>B</sub></th><td>{{ result.vb }}</td></tr>
+          <tr><th>V<sub>E</sub></th><td>{{ result.ve }}</td></tr>
+          <tr><th>V<sub>C</sub></th><td>{{ result.vc }}</td></tr>
+          <tr class="highlight"><th>V<sub>CE</sub></th><td>{{ result.vce }}</td></tr>
+          <tr><th>I<sub>B</sub></th><td>{{ result.ib }}</td></tr>
+          <tr><th>I<sub>C</sub></th><td>{{ result.ic }}</td></tr>
+          <tr><th>I<sub>E</sub></th><td>{{ result.ie }}</td></tr>
         </tbody>
       </table>
-      <p class="note">โซนการทำงาน: {{ result.region_label }}</p>
+
+      {% if result.region == "active" %}
+      <div class="banner banner-ok">
+        <span class="banner-icon">✓</span>
+        <div><strong>Active region approximation OK</strong><br>
+        V<sub>CE</sub> = {{ result.vce }} &gt; 0.2 V (transistor in active region)</div>
+      </div>
+      {% elif result.region == "saturation" %}
+      <div class="banner banner-danger">
+        <span class="banner-icon">⚠</span>
+        <div><strong>Saturation — Forward-Active approximation not valid</strong><br>
+        V<sub>CE</sub> = {{ result.vce }} &lt; 0.2 V; IC ≈ IC(sat) = {{ result.ic_sat }}</div>
+      </div>
+      {% else %}
+      <div class="banner banner-danger">
+        <span class="banner-icon">⚠</span>
+        <div><strong>Cutoff — Forward-Active approximation not valid</strong><br>
+        V<sub>TH</sub> ≤ V<sub>BE</sub>; transistor is off</div>
+      </div>
+      {% endif %}
+
+      <p class="intermediate">Intermediate — V<sub>TH</sub> = {{ result.vth }} · R<sub>TH</sub> = {{ result.rth }}</p>
+      {% endif %}
     </section>
-    {% endif %}
   </main>
+
+  <footer class="goal-strip">
+    <span class="goal-icon">🎯</span>
+    <div>
+      <span class="goal-label">Week 2 Goal</span>
+      <span class="goal-text">Rough target for this lab: Build a Flask web app that takes the circuit parameters,
+        computes the BJT DC bias (V<sub>B</sub>, V<sub>E</sub>, V<sub>C</sub>, V<sub>CE</sub>, I<sub>B</sub>, I<sub>C</sub>, I<sub>E</sub>)
+        for a common-emitter amplifier with voltage-divider bias, and displays the results.</span>
+    </div>
+  </footer>
 </body>
 </html>
