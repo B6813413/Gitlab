@@ -5,13 +5,16 @@
   --muted: #5d6f86;
   --accent: #0f6b78;
   --accent-dark: #0b525c;
-  --accent-soft: #e2f3f4;
+  --accent-soft: #eef6f7;
   --danger: #b3261e;
   --danger-bg: #fdecea;
   --ok: #1f7a3a;
   --ok-bg: #e6f6ea;
   --border: #d6dee8;
   --chip: #f4f7fb;
+  --goal-bg: #f3f6fd;
+  --goal-border: #dde6f5;
+  --goal-text: #1f3a5f;
 }
 
 * { box-sizing: border-box; }
@@ -30,38 +33,44 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  padding: 0.9rem 1.6rem;
+  padding: 0.85rem 1.6rem;
   background: #fff;
   border-bottom: 1px solid var(--border);
 }
 .brand { display: flex; align-items: center; gap: 0.9rem; }
-.chip { width: 46px; height: 46px; flex: 0 0 auto; }
-.topbar h1 { margin: 0; font-size: 1.42rem; font-weight: 700; letter-spacing: -0.01em; }
-.topbar p { margin: 0.1rem 0 0; color: var(--muted); font-size: 0.86rem; }
+.chip { width: 48px; height: 48px; flex: 0 0 auto; }
+.topbar h1 { margin: 0; font-size: 1.44rem; font-weight: 700; letter-spacing: -0.01em; }
+.topbar p { margin: 0.12rem 0 0; color: var(--muted); font-size: 0.86rem; }
 
 .course-badge {
-  display: flex; align-items: center; gap: 0.55rem;
+  display: flex; align-items: center; gap: 0.6rem;
   background: var(--accent-soft);
-  border: 1px solid #cfe6e8;
-  padding: 0.45rem 0.8rem;
-  border-radius: 12px;
+  border: 1px solid #cfe3e6;
+  padding: 0.45rem 0.9rem;
+  border-radius: 14px;
 }
 .badge-icon {
   font-weight: 800; color: var(--accent);
-  font-size: 1rem;
+  font-size: 0.95rem;
   background: #fff;
-  border: 1px solid #cfe6e8;
+  border: 1px solid #cfe3e6;
   border-radius: 8px;
-  padding: 0.15rem 0.4rem;
+  padding: 0.18rem 0.45rem;
 }
-.badge-text { font-size: 0.78rem; color: var(--accent-dark); line-height: 1.25; text-align: right; }
+.badge-text {
+  font-size: 0.78rem;
+  color: var(--accent-dark);
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+}
 
-/* ---- Layout ---- */
+/* ---- Layout: 3 columns, collapses inwards ---- */
 .layout {
   display: grid;
-  grid-template-columns: minmax(320px, 400px) 1fr minmax(300px, 360px);
+  grid-template-columns: 320px minmax(0, 1fr) 330px;
   gap: 1rem;
-  padding: 1.25rem 1.6rem;
+  padding: 1.1rem 1.6rem 1rem;
   max-width: 1500px;
   margin: 0 auto;
   align-items: start;
@@ -70,14 +79,14 @@ body {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 1.1rem 1.25rem;
+  padding: 1.1rem 1.1rem;
   box-shadow: 0 6px 20px rgba(16, 32, 46, 0.06);
 }
 .panel h2 {
   margin: 0 0 0.9rem;
   font-size: 1.02rem;
   font-weight: 700;
-  color: var(--ink);
+  color: #17325a;
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -86,20 +95,20 @@ body {
 .icon-accent { color: var(--accent); }
 
 /* ---- Form ---- */
-.field { margin-bottom: 0.75rem; }
+.field { margin-bottom: 0.62rem; }
 .field label {
   display: block;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--muted);
-  margin-bottom: 0.28rem;
+  margin-bottom: 0.26rem;
   font-weight: 600;
 }
-.control { display: flex; gap: 0.4rem; }
+.control { display: flex; gap: 0.35rem; }
 .control input {
   flex: 1 1 auto;
   min-width: 0;
   font: inherit;
-  padding: 0.48rem 0.6rem;
+  padding: 0.46rem 0.55rem;
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--ink);
@@ -108,17 +117,17 @@ body {
 .control input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .control select {
   font: inherit;
-  width: 3.4rem;
-  padding: 0.48rem 0.2rem;
-  border: 1px solid var(--border);
+  width: 3.5rem;
+  padding: 0.46rem 0.2rem;
+  border: 1px solid #e2e7ee;
   border-radius: 8px;
-  background: #fff;
+  background: var(--chip);
   color: var(--ink);
   cursor: pointer;
 }
-.control select:disabled { cursor: default; background: var(--chip); }
+.control select:disabled { cursor: default; background: var(--chip); color: var(--muted); }
 .unit-note {
-  width: 3.4rem;
+  width: 3.5rem;
   text-align: center;
   color: var(--muted);
   font-weight: 600;
@@ -129,16 +138,17 @@ sub { font-size: 0.75em; }
 
 .primary {
   width: 100%;
-  margin-top: 0.4rem;
+  margin-top: 0.5rem;
   font: inherit;
   font-weight: 700;
-  font-size: 0.98rem;
+  font-size: 1rem;
   color: #fff;
   background: var(--accent);
   border: 0;
   border-radius: 10px;
-  padding: 0.7rem 1rem;
+  padding: 0.72rem 1rem;
   cursor: pointer;
+  letter-spacing: 0.01em;
 }
 .primary:hover { background: var(--accent-dark); }
 
@@ -159,63 +169,77 @@ sub { font-size: 0.75em; }
 
 .results-table { width: 100%; border-collapse: collapse; }
 .results-table th, .results-table td {
-  padding: 0.42rem 0.5rem;
-  border-bottom: 1px solid var(--border);
-  text-align: left;
+  padding: 0.38rem 0.3rem;
+  border-bottom: 1px solid #e6eaf1;
 }
+.results-table tr:last-child th, .results-table tr:last-child td { border-bottom: 0; }
 .results-table tr.highlight th, .results-table tr.highlight td { background: var(--chip); }
-.results-table th { color: var(--muted); font-weight: 600; width: 34%; }
-.results-table td { font-weight: 700; font-size: 0.95rem; letter-spacing: 0.01em; }
+.results-table th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.84rem;
+  width: 30%;
+}
+.results-table td {
+  text-align: right;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #17325a;
+}
 
 .banner {
-  display: flex; gap: 0.6rem; align-items: flex-start;
+  display: flex; gap: 0.6rem; align-items: center;
   border-radius: 10px;
-  padding: 0.7rem 0.85rem;
+  padding: 0.75rem 0.85rem;
   margin-top: 0.9rem;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 .banner-ok { background: var(--ok-bg); border: 1px solid #bfe3c9; color: var(--ok); }
 .banner-danger { background: var(--danger-bg); border: 1px solid #f3c2bc; color: var(--danger); }
 .banner-icon {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 1.5rem; height: 1.5rem;
+  width: 1.55rem; height: 1.55rem;
   border-radius: 999px;
   color: #fff;
   font-weight: 800;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   flex: 0 0 auto;
 }
 .banner-ok .banner-icon { background: var(--ok); }
 .banner-danger .banner-icon { background: var(--danger); }
-.intermediate { color: var(--muted); font-size: 0.8rem; margin: 0.7rem 0 0; }
+.banner strong { font-size: 0.92rem; }
+.banner div { font-size: 0.84rem; }
+.intermediate { color: var(--muted); font-size: 0.78rem; margin: 0.6rem 0 0; }
 
 /* ---- Week 2 goal strip ---- */
 .goal-strip {
-  display: flex; gap: 0.75rem; align-items: flex-start;
+  display: flex; gap: 0.8rem; align-items: center;
   margin: 0 1.6rem 1.4rem;
-  max-width: 1500px;
-  padding: 0.65rem 0.9rem;
-  background: #eaf1fb;
-  border: 1px solid #d3e0f2;
-  border-radius: 10px;
-  font-size: 0.85rem;
+  padding: 0.6rem 1.6rem;
+  background: var(--goal-bg);
+  border: 1px solid var(--goal-border);
+  border-radius: 12px;
+  font-size: 0.88rem;
 }
-.goal-icon { font-size: 1.2rem; line-height: 1.4; }
+.goal-icon { flex: 0 0 auto; display: inline-flex; }
 .goal-label {
-  display: inline-block;
-  color: #1f4e8c; font-weight: 700;
-  margin-right: 0.6rem;
+  color: #17477a; font-weight: 700;
+  margin-right: 0.55rem;
+  white-space: nowrap;
 }
-.goal-text { color: #30507e; }
+.goal-text { color: var(--goal-text); }
 
 /* ---- Responsive ---- */
-@media (max-width: 1120px) {
-  .layout { grid-template-columns: minmax(260px, 1fr) 1fr; }
+@media (max-width: 1023px) {
+  .layout { grid-template-columns: 320px 1fr; }
   .panel-results { grid-column: 1 / -1; }
 }
-@media (max-width: 760px) {
-  .topbar { flex-direction: column; align-items: flex-start; }
-  .course-badge { text-align: left; }
-  .layout { grid-template-columns: 1fr; padding: 1rem; }
-  .goal-strip { flex-direction: column; margin: 0 1rem 1rem; }
+@media (max-width: 880px) {
+  .layout { grid-template-columns: 1fr; padding: 0.9rem; }
+  .topbar { flex-direction: column; align-items: flex-start; padding: 0.8rem 1rem; }
+  .brand { gap: 0.6rem; }
+  .chip { width: 40px; height: 40px; }
+  .topbar h1 { font-size: 1.15rem; }
+  .badge-text { text-align: left; }
+  .goal-strip { margin-left: 0.9rem; margin-right: 0.9rem; align-items: flex-start; }
 }
