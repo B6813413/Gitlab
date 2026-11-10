@@ -75,7 +75,17 @@ def validate_inputs(values: dict[str, str]) -> dict[str, str]:
     return errors
 
 def dc_operating_point(vcc, r1, r2, rc, re, beta, vbe, vce_sat=0.2):
-    """Return the DC operating point of a voltage-divider bias circuit."""
+    """Return the DC operating point of a voltage-divider bias circuit.
+
+    Direct callers must keep denominators non-zero. Callers should validate
+    input via `validate_inputs` first; this guard only converts a cryptic
+    ZeroDivisionError into a clear ValueError.
+    """
+    if r1 + r2 == 0:
+        raise ValueError("R1 + R2 ต้องมากกว่า 0")
+    if rc + re == 0:
+        raise ValueError("RC + RE ต้องมากกว่า 0")
+
     vth = vcc * r2 / (r1 + r2)
     rth = r1 * r2 / (r1 + r2)
     ib = (vth - vbe) / (rth + (beta + 1) * re)

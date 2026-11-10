@@ -17,6 +17,14 @@ class TestDCOperatingPoint(unittest.TestCase):
         self.assertAlmostEqual(r["vce"], 8.052155350502685, places=9)
         self.assertEqual(r["region"], "active")
 
+    def test_zero_r1_plus_r2_raises_value_error(self):
+        with self.assertRaises(ValueError):
+            dc_operating_point(12, 100.0, -100.0, 2200, 1000, 100, 0.7)
+
+    def test_zero_rc_plus_re_raises_value_error(self):
+        with self.assertRaises(ValueError):
+            dc_operating_point(12, 100000, 22000, 2200, -2200, 100, 0.7)
+
     def test_saturation_region_detected(self):
         r = dc_operating_point(12, 100000, 22000, 10000, 1000, 100, 0.7)
         self.assertEqual(r["region"], "saturation")

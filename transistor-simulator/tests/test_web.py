@@ -65,3 +65,9 @@ class TestCalculateRoute(unittest.TestCase):
         resp = self.client.post("/", data={})
         self.assertEqual(resp.status_code, 400)
         self.assertNotIn(b"Active", resp.data)
+
+    def test_post_cutoff_shows_warning(self):
+        resp = self.client.post("/", data=dict(self.valid, r2="2.2k"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"Cutoff", resp.data)
+        self.assertIn("Forward-Active".encode("utf-8"), resp.data)
