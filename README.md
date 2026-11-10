@@ -1,10 +1,13 @@
-<<<<<<< HEAD
 # Gitlab
-ใช้สำหรับเรียนเเลป Compro ไฟฟ้า
-=======
-DC Circuit Calculator
 
-โปรแกรมสำหรับคำนวณและวิเคราะห์ค่าทางไฟฟ้าในวงจรกระแสตรง (DC Circuit) โดยเน้นการคำนวณวงจรตัวต้านทานพื้นฐาน
-วัตถุประสงค์หลักคือช่วยคำนวณหาค่ากระแสไฟฟ้า (Current) และกำลังไฟฟ้า (Power) ของวงจรตัวต้านทานได้อย่างถูกต้องและรวดเร็ว
-เหมาะสำหรับนักเรียน นักศึกษา และผู้ที่สนใจใช้เป็นเครื่องมือช่วยตรวจสอบความถูกต้องของการคำนวณทางทฤษฎีไฟฟ้า
->>>>>>> feature/input-validation
+งานแลปในรายวิชา Compro ไฟฟ้า
+
+## Week 1 — DC Circuit Calculator
+
+`electrical.py` + `test_electrical.py`: โปรแกรมคำนวณกระแส (Current) และกำลัง (Power) ของวงจร DC ตัวต้านทาน พร้อม input validation และ unit tests
+
+## Week 2 — Transistor DC Bias Simulator
+
+`transistor-simulator/`: Flask web application สำหรับคำนวณ DC Operating Point ของวงจรขยาย BJT Common Emitter (Voltage-Divider Bias)
+
+See [`transistor-simulator/README.md`](transistor-simulator/README.md) for install / run / test instructions.
