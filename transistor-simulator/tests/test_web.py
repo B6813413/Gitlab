@@ -49,3 +49,19 @@ class TestCalculateRoute(unittest.TestCase):
         self.assertEqual(format_current(1.229858e-03), "1.230 mA")
         self.assertEqual(format_voltage(8.0521553), "8.052 V")
         self.assertEqual(format_resistance(18032.7869), "18.033 k\u03a9")
+
+    def test_post_invalid_returns_400_with_message(self):
+        resp = self.client.post("/", data=dict(self.valid, vcc="0"))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("ต้องมากกว่า 0".encode("utf-8"), resp.data)
+
+    def test_invalid_post_keeps_user_values(self):
+        resp = self.client.post("/", data=dict(self.valid, r1="abc"))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn(b'value="abc"', resp.data)
+        self.assertIn(b'value="22k"', resp.data)
+
+    def test_all_blank_returns_400(self):
+        resp = self.client.post("/", data={})
+        self.assertEqual(resp.status_code, 400)
+        self.assertNotIn(b"Active", resp.data)
