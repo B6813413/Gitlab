@@ -16,8 +16,12 @@ def dc_operating_point(vcc, r1, r2, rc, re, beta, vbe, vce_sat=0.2):
     vb = ve + vbe
     vc = vcc - ic * rc
     vce = vc - ve
-    # Saturation/cutoff classification is added in Task 2.
-    region = "active"
+    if ib <= 0:
+        region = "cutoff"
+    elif vce < vce_sat:
+        region = "saturation"
+    else:
+        region = "active"
     ic_sat = (vcc - vce_sat) / (rc + re)
     return {
         "vth": vth,

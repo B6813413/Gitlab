@@ -16,3 +16,19 @@ class TestDCOperatingPoint(unittest.TestCase):
         self.assertAlmostEqual(r["vc"], 9.29431207822614, places=9)
         self.assertAlmostEqual(r["vce"], 8.052155350502685, places=9)
         self.assertEqual(r["region"], "active")
+
+    def test_saturation_region_detected(self):
+        r = dc_operating_point(12, 100000, 22000, 10000, 1000, 100, 0.7)
+        self.assertEqual(r["region"], "saturation")
+        self.assertAlmostEqual(r["ic_sat"], 1.0727272727272728e-03, places=12)
+        self.assertLess(r["vce"], 0)
+
+    def test_cutoff_region_detected(self):
+        r = dc_operating_point(12, 100000, 2200, 2200, 1000, 100, 0.7)
+        self.assertEqual(r["region"], "cutoff")
+        self.assertLessEqual(r["vth"], 0.7)
+
+    def test_beta_one_is_active(self):
+        r = dc_operating_point(12, 100000, 22000, 2200, 1000, 1, 0.7)
+        self.assertEqual(r["region"], "active")
+        self.assertAlmostEqual(r["ib"], 7.307692307692309e-05, places=12)
