@@ -101,3 +101,34 @@ class TestValidateInputs(unittest.TestCase):
         errors = validate_inputs(self.base(r1="0", r2="0"))
         self.assertIn("r1", errors)
         self.assertIn("r2", errors)
+
+class TestParseResistanceUnit(unittest.TestCase):
+    def test_kohm_unit_multiplier(self):
+        self.assertEqual(parse_resistance("100", "kohm"), 100000.0)
+        self.assertEqual(parse_resistance("2.2", "kohm"), 2200.0)
+        self.assertEqual(parse_resistance("100", "ohm"), 100.0)
+        self.assertEqual(parse_resistance("1000", "ohm"), 1000.0)
+
+    def test_k_suffix_overrides_unit(self):
+        self.assertEqual(parse_resistance("100k", "kohm"), 100000.0)
+        self.assertEqual(parse_resistance("2.2k", "ohm"), 2200.0)
+
+
+class TestValidateInputsWithUnits(unittest.TestCase):
+    def base(self, **over):
+        data = {"vcc": "12", "r1": "100", "r1_unit": "kohm",
+                "r2": "22", "r2_unit": "kohm",
+                "rc": "2.2", "rc_unit": "kohm",
+                "re": "1", "re_unit": "kohm",
+                "beta": "100", "vbe": "0.7"}
+        data.update(over)
+        return data
+
+    def test_valid_kohm_input_has_no_errors(self):
+        self.assertEqual(validate_inputs(self.base()), {})
+
+    def test_zero_kohm_resistor_is_rejected(self):
+        self.assertIn("r1", validate_inputs(self.base(r1="0")))
+
+    def test_invalid_kohm_value_is_rejected(self):
+        self.assertIn("r2", validate_inputs(self.base(r2="abc")))

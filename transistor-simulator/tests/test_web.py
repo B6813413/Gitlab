@@ -71,3 +71,21 @@ class TestCalculateRoute(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn(b"Cutoff", resp.data)
         self.assertIn("Forward-Active".encode("utf-8"), resp.data)
+
+    def test_post_with_kohm_unit_select(self):
+        data = {"vcc": "12", "vcc_unit": "V",
+                "r1": "100", "r1_unit": "kohm",
+                "r2": "22", "r2_unit": "kohm",
+                "rc": "2.2", "rc_unit": "kohm",
+                "re": "1", "re_unit": "kohm",
+                "beta": "100", "vbe": "0.7"}
+        resp = self.client.post("/", data=data)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"8.052 V", resp.data)
+        self.assertIn(b"1.230 mA", resp.data)
+
+    def test_post_with_bad_kohm_value_returns_400(self):
+        data = dict(self.valid, r1="abc", r1_unit="kohm")
+        resp = self.client.post("/", data=data)
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn(b"abc", resp.data)

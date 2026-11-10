@@ -7,18 +7,23 @@ All values are SI units (volts, ohms, amps); beta is dimensionless.
 import math
 
 
-def parse_resistance(text: str) -> float:
-    """Parse a resistance string in ohms. Accepts an optional k/K suffix."""
+def parse_resistance(text: str, unit: str = "ohm") -> float:
+    """Parse a resistance string in ohms.
+
+    Accepted units: "ohm" (default) or "kohm" (multiply by 1000).
+    A trailing "k"/"K" suffix in the value overrides the unit (100k == 100 * kΩ).
+    """
     raw = (text or "").strip()
     if not raw:
         raise ValueError("กรุณากรอกค่านี้")
-    value_text = raw
     multiplier = 1.0
-    if value_text[-1] in "kK":
+    if str(unit or "ohm").strip().lower() in ("kohm", "k"):
         multiplier = 1000.0
-        value_text = value_text[:-1].strip()
+    if raw and raw[-1] in "kK":
+        multiplier = 1000.0
+        raw = raw[:-1].strip()
     try:
-        value = float(value_text)
+        value = float(raw)
     except (TypeError, ValueError) as exc:
         raise ValueError("ต้องเป็นตัวเลขที่จำกัด") from exc
     if not math.isfinite(value):
@@ -36,7 +41,8 @@ def validate_inputs(values: dict[str, str]) -> dict[str, str]:
 
     for field in ("r1", "r2", "rc", "re"):
         try:
-            parsed[field] = parse_resistance(raw(field))
+            unit = str((values or {}).get(f"{field}_unit", "ohm")).strip().lower()
+            parsed[field] = parse_resistance(raw(field), unit)
         except ValueError as exc:
             errors[field] = str(exc)
 

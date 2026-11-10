@@ -40,10 +40,10 @@ def index():
         vcc = float(form["vcc"])
         beta = float(form["beta"])
         vbe = float(form["vbe"])
-        r1 = parse_resistance(form["r1"])
-        r2 = parse_resistance(form["r2"])
-        rc = parse_resistance(form["rc"])
-        re_ = parse_resistance(form["re"])
+        r1 = parse_resistance(form["r1"], form.get("r1_unit", "ohm"))
+        r2 = parse_resistance(form["r2"], form.get("r2_unit", "ohm"))
+        rc = parse_resistance(form["rc"], form.get("rc_unit", "ohm"))
+        re_ = parse_resistance(form["re"], form.get("re_unit", "ohm"))
     except (KeyError, ValueError):
         return render_template("index.html", values=form,
                                errors={"form": "ต้องเป็นตัวเลขที่จำกัด"},
