@@ -104,13 +104,13 @@ def validate_inputs(values: dict, mode: str = "voltage_divider") -> dict:
     elif mode == "fixed":
         _parse_res_field("rb")
         if "rb" in parsed and parsed["rb"] <= 0:
-            errors["rb"] = "ต้องมากกว่า 0"
+            errors["rb"] = "ค่า RB (Fixed Bias) ต้องมากกว่า 0"
 
     elif mode == "emitter":
         _parse_res_field("rb")
         _parse_res_field("re")
         if "rb" in parsed and parsed["rb"] <= 0:
-            errors["rb"] = "ต้องมากกว่า 0"
+            errors["rb"] = "ค่า RB (Emitter Bias) ต้องมากกว่า 0"
         if "re" in parsed and parsed["re"] < 0:
             errors["re"] = "ต้องไม่ติดลบ"
 

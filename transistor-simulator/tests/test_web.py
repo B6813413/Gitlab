@@ -26,7 +26,8 @@ class TestIndexPage(unittest.TestCase):
         for field in ('name="vcc"', 'name="rc"', 'name="beta"', 'name="vbe"'):
             self.assertIn(field, post_html)
         self.assertIn("Calculate DC Bias", post_html)
-        self.assertNotIn('name="mode"', post_html)  # mode อยู่ใน GET form
+        self.assertIn('type="hidden" name="mode"', post_html)  # ส่งโหมดเป็น hidden field
+        self.assertNotIn('<select name="mode"', post_html)  # select อยู่ใน GET form
 
 class TestCalculateRoute(unittest.TestCase):
     def setUp(self):
@@ -124,6 +125,12 @@ class TestBiasModeSelection(unittest.TestCase):
         self.assertIn(b"Fixed Bias", resp.data)
         self.assertIn(b"Emitter Bias", resp.data)
 
+    def test_post_form_carries_mode_hidden_field(self):
+        # ฟอร์ม POST ต้องส่ง mode มาด้วย ไม่ต้องพึ่ง query string
+        resp = self.client.get("/?mode=fixed")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b'name="mode" value="fixed"', resp.data)
+
     def test_post_voltage_divider_preserves_lab2_result(self):
         # Voltage Divider กับค่าเดิมต้องให้ผลเหมือน Lab 2 (เดิมต้องให้ผลเดิม)
         data = dict(self.common, mode="voltage_divider",
@@ -155,11 +162,11 @@ class TestBiasModeSelection(unittest.TestCase):
         self.assertIn(b"Emitter Bias", resp.data)
 
     def test_post_fixed_rb_zero_returns_400(self):
-        # RB = 0 → ต้องมากกว่า 0 → HTTP 400, เว็บไม่ล่ม, ไม่แสดงผลเก่า
+        # RB = 0 → แจ้งให้แก้ RB → HTTP 400, เว็บไม่ล่ม, ไม่แสดงผลเก่า
         data = dict(self.common, mode="fixed", rb="0", rb_unit="kohm")
         resp = self.client.post("/", data=data)
         self.assertEqual(resp.status_code, 400)
-        self.assertIn("ต้องมากกว่า 0".encode("utf-8"), resp.data)
+        self.assertIn("ค่า RB (Fixed Bias) ต้องมากกว่า 0".encode("utf-8"), resp.data)
 
     def test_post_emitter_missing_re_returns_400(self):
         data = dict(self.common, mode="emitter", rb="1000k", rb_unit="kohm")
