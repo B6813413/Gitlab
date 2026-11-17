@@ -94,15 +94,18 @@ def build_diagram(values: dict, mode: str) -> dict:
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    mode = (request.form.get("mode") or request.args.get("mode")
-            or DEFAULT_VALUES["mode"])
-    if mode not in MODE_LABELS:
-        mode = "voltage_divider"
+    submitted_mode = (request.form.get("mode") or request.args.get("mode")
+                      or DEFAULT_VALUES["mode"])
+    mode = submitted_mode if submitted_mode in MODE_LABELS else DEFAULT_VALUES["mode"]
 
     errors = None
     result = None
     values = dict(DEFAULT_VALUES)
     values["mode"] = mode
+
+    # โหมดที่ไม่รู้จักต้องแจ้งข้อผิดพลาด (ไม่เดาว่าเป็น Voltage Divider)
+    if submitted_mode not in MODE_LABELS:
+        errors = {"mode": f"โหมดวงจร '{submitted_mode}' ไม่รู้จัก กรุณาเลือกโหมดที่ถูกต้อง"}
 
     if request.method == "POST":
         form = request.form.to_dict()
@@ -111,7 +114,12 @@ def index():
         values.update({f"{f}_unit": form.get(f"{f}_unit", DEFAULT_VALUES.get(f"{f}_unit", "kohm"))
                        for f in ("r1", "r2", "rc", "re", "rb")})
 
-        errors = validate_inputs(form, mode)
+        form_errors = validate_inputs(form, submitted_mode)
+        if form_errors:
+            if errors:
+                errors.update(form_errors)
+            else:
+                errors = form_errors
         if errors:
             return render_template(
                 "index.html", values=values, errors=errors, result=None,
@@ -122,7 +130,7 @@ def index():
         # แปลงหน่วยจากฟอร์ม (kΩ -> Ω ฯลฯ) ที่จุดรับค่าเดียวก่อนส่งให้ dc_bias.py
         try:
             inputs = {
-                "mode": mode,
+                "mode": submitted_mode,
                 "vcc": float(form["vcc"]),
                 "rc": parse_resistance(form["rc"], form.get("rc_unit", "ohm")),
                 "beta": float(form["beta"]),
@@ -147,7 +155,7 @@ def index():
                 mode_labels=MODE_LABELS,
             ), 400
 
-        op = compute_bias(mode, inputs)
+        op = compute_bias(submitted_mode, inputs)
         if op.get("error"):
             errors = {"form": op["error"]}
             return render_template(

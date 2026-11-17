@@ -34,21 +34,22 @@
     <!-- Input Parameters -->
     <section class="panel panel-input">
       <h2><span class="icon icon-accent">⚙️</span> Input Parameters</h2>
-      <form method="post" novalidate>
-        <form method="get" action="/" style="margin:0 0 1rem 0;border:none;background:none;padding:0;box-shadow:none;">
-          <div class="field">
-            <label for="mode">เลือกวงจรไบอัส (Bias mode)</label>
-            <div class="control">
-              <select name="mode" id="mode" onchange="this.form.submit()">
-                {% for key, label in mode_labels.items() %}
-                  <option value="{{ key }}" {% if mode == key %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-              </select>
-            </div>
+      <form method="get" action="/" class="mode-form" style="margin:0 0 1rem 0;border:none;background:none;padding:0;box-shadow:none;">
+        <div class="field">
+          <label for="mode">เลือกวงจรไบอัส (Bias mode)</label>
+          <div class="control">
+            <select name="mode" id="mode" onchange="this.form.submit()">
+              {% for key, label in mode_labels.items() %}
+                <option value="{{ key }}" {% if mode == key %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
           </div>
-          <p class="unit-note" style="text-align:left">เปลี่ยนโหมดแล้วฟอร์มจะโหลดใหม่ แสดงเฉพาะช่องที่ใช้กับโหมดนั้น (ผลรอบก่อนจะถูกล้าง)</p>
-        </form>
+          {% if errors and errors.mode %}<p class="field-error">{{ errors.mode }}</p>{% endif %}
+        </div>
+        <p class="unit-note" style="text-align:left">เปลี่ยนโหมดแล้วฟอร์มจะโหลดใหม่ แสดงเฉพาะช่องที่ใช้กับโหมดนั้น (ผลรอบก่อนจะถูกล้าง)</p>
+      </form>
 
+      <form method="post" novalidate>
         <div class="field">
           <label for="vcc">V<sub>CC</sub> (Supply Voltage)</label>
           <div class="control">

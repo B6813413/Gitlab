@@ -16,6 +16,18 @@ class TestIndexPage(unittest.TestCase):
             self.assertIn(field, resp.data)
         self.assertIn(b'value="0.7"', resp.data)
 
+    def test_forms_not_nested_and_inputs_in_post_form(self):
+        # <form> ซ้อนกันทำให้ browser ตัดโครงสร้าง ฟิลด์/ปุ่มหลุดออกจากฟอร์ม
+        html = self.client.get("/").get_data(as_text=True)
+        self.assertEqual(html.count("<form"), 2)  # GET mode-form + POST form
+        start = html.index('<form method="post"')
+        end = html.index("</form>", start)
+        post_html = html[start:end]
+        for field in ('name="vcc"', 'name="rc"', 'name="beta"', 'name="vbe"'):
+            self.assertIn(field, post_html)
+        self.assertIn("Calculate DC Bias", post_html)
+        self.assertNotIn('name="mode"', post_html)  # mode อยู่ใน GET form
+
 class TestCalculateRoute(unittest.TestCase):
     def setUp(self):
         app.testing = True
@@ -149,3 +161,18 @@ class TestBiasModeSelection(unittest.TestCase):
         resp = self.client.post("/", data=data)
         self.assertEqual(resp.status_code, 400)
         self.assertIn("re".encode("utf-8"), resp.data)
+
+    def test_post_unknown_mode_returns_400_with_error(self):
+        # โหมดที่ไม่รู้จักต้องแจ้งข้อผิดพลาด ไม่เดาว่าเป็น Voltage Divider
+        data = dict(self.common, mode="bogus", r1="100k", r2="22k", re="1k",
+                    r1_unit="kohm", r2_unit="kohm", re_unit="kohm")
+        resp = self.client.post("/", data=data)
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("ไม่รู้จัก".encode("utf-8"), resp.data)
+        self.assertNotIn(b"1.230 mA", resp.data)  # ไม่โชว์ผล Divider แทน
+
+    def test_get_unknown_mode_query_shows_error(self):
+        resp = self.client.get("/?mode=bogus")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("ไม่รู้จัก".encode("utf-8"), resp.data)
+        self.assertNotIn(b"1.230 mA", resp.data)
