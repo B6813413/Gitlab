@@ -51,6 +51,13 @@ def format_current(amps) -> str:
     return f"{amps * 1e6:.3f} µA"
 
 
+def format_ic_ma(amps) -> str:
+    """Format collector current in mA (Lab 03 กำหนดให้แสดง IC เป็น mA เสมอ)."""
+    if amps is None:
+        return ""
+    return f"{amps * 1000:.3f} mA"
+
+
 def format_voltage(volts) -> str:
     """Format voltage in volts with three decimals."""
     if volts is None:
@@ -173,7 +180,7 @@ def index():
             "vth": (format_voltage(op["vth"]) if op.get("vth") is not None else ""),
             "rth": (format_resistance(op["rth"]) if op.get("rth") is not None else ""),
             "ib": format_current(op["ib"]),
-            "ic": format_current(op["ic"]),
+            "ic": format_ic_ma(op["ic"]),
             "ie": format_current(op["ie"]),
             "ve": format_voltage(op["ve"]),
             "vb": format_voltage(op["vb"]),
@@ -188,7 +195,7 @@ def index():
                 ("VC", format_voltage(op["vc"])),
                 ("VCE", format_voltage(op["vce"])),
                 ("IB", format_current(op["ib"])),
-                ("IC", format_current(op["ic"])),
+                ("IC", format_ic_ma(op["ic"])),
                 ("IE", format_current(op["ie"])),
             ],
         }

@@ -1,6 +1,6 @@
 import unittest
 
-from app import app, format_current, format_voltage, format_resistance
+from app import app, format_current, format_ic_ma, format_voltage, format_resistance
 
 
 class TestIndexPage(unittest.TestCase):
@@ -61,6 +61,11 @@ class TestCalculateRoute(unittest.TestCase):
         self.assertEqual(format_current(1.229858e-03), "1.230 mA")
         self.assertEqual(format_voltage(8.0521553), "8.052 V")
         self.assertEqual(format_resistance(18032.7869), "18.033 k\u03a9")
+
+    def test_ic_formatter_always_uses_ma(self):
+        # Lab 03 กำหนดให้แสดง IC เป็น mA แม้ค่าต่ำกว่า 1 mA (กรณี A4)
+        self.assertEqual(format_ic_ma(0.9401e-03), "0.940 mA")
+        self.assertEqual(format_ic_ma(1.229858e-03), "1.230 mA")
 
     def test_post_invalid_returns_400_with_message(self):
         resp = self.client.post("/", data=dict(self.valid, vcc="0"))
@@ -176,3 +181,14 @@ class TestBiasModeSelection(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("ไม่รู้จัก".encode("utf-8"), resp.data)
         self.assertNotIn(b"1.230 mA", resp.data)
+
+    def test_post_emitter_re_change_affects_ic(self):
+        # A4: เปลี่ยน RE ในโหมด Emitter ต้องเปลี่ยน IC (ติดตามค่าจากฟอร์มถึงสมการ)
+        data = dict(self.common, mode="emitter", rb="1000k", re="1k",
+                    rb_unit="kohm", re_unit="kohm")
+        first = self.client.post("/", data=data)
+        second = self.client.post("/", data=dict(data, re="2k"))
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertIn(b"1.026 mA", first.data)
+        self.assertIn(b"0.940 mA", second.data)
