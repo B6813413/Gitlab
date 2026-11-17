@@ -89,3 +89,63 @@ class TestCalculateRoute(unittest.TestCase):
         resp = self.client.post("/", data=data)
         self.assertEqual(resp.status_code, 400)
         self.assertIn(b"abc", resp.data)
+
+
+class TestBiasModeSelection(unittest.TestCase):
+    """เลือกโหมดวงจรได้สามแบบ; โหมดเดิมต้องให้ผลเดิมเมื่อกรอกค่าเดิม."""
+
+    def setUp(self):
+        app.testing = True
+        self.client = app.test_client()
+        self.common = {"vcc": "12", "rc": "2.2k", "beta": "100", "vbe": "0.7"}
+
+    def test_get_shows_mode_selector(self):
+        resp = self.client.get("/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b'name="mode"', resp.data)
+        self.assertIn(b"Voltage Divider Bias", resp.data)
+        self.assertIn(b"Fixed Bias", resp.data)
+        self.assertIn(b"Emitter Bias", resp.data)
+
+    def test_post_voltage_divider_preserves_lab2_result(self):
+        # Voltage Divider กับค่าเดิมต้องให้ผลเหมือน Lab 2 (เดิมต้องให้ผลเดิม)
+        data = dict(self.common, mode="voltage_divider",
+                    r1="100k", r2="22k", re="1k",
+                    r1_unit="kohm", r2_unit="kohm", re_unit="kohm")
+        resp = self.client.post("/", data=data)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"1.230 mA", resp.data)   # IC
+        self.assertIn(b"8.052 V", resp.data)    # VCE
+        self.assertIn(b"1.942 V", resp.data)    # VB
+        self.assertIn(b"Voltage Divider Bias", resp.data)
+
+    def test_post_fixed_bias_shows_result(self):
+        data = dict(self.common, mode="fixed", rb="1000k", rb_unit="kohm")
+        resp = self.client.post("/", data=data)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"1.130 mA", resp.data)   # IC
+        self.assertIn(b"9.514 V", resp.data)    # VCE
+        self.assertIn(b"Fixed Bias", resp.data)
+        self.assertNotIn(b"VTH", resp.data)     # Fixed Bias ไม่มี VTH/RTH
+
+    def test_post_emitter_bias_shows_result(self):
+        data = dict(self.common, mode="emitter", rb="1000k", re="1k",
+                    rb_unit="kohm", re_unit="kohm")
+        resp = self.client.post("/", data=data)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"1.026 mA", resp.data)   # IC
+        self.assertIn(b"8.705 V", resp.data)    # VCE
+        self.assertIn(b"Emitter Bias", resp.data)
+
+    def test_post_fixed_rb_zero_returns_400(self):
+        # RB = 0 → ต้องมากกว่า 0 → HTTP 400, เว็บไม่ล่ม, ไม่แสดงผลเก่า
+        data = dict(self.common, mode="fixed", rb="0", rb_unit="kohm")
+        resp = self.client.post("/", data=data)
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("ต้องมากกว่า 0".encode("utf-8"), resp.data)
+
+    def test_post_emitter_missing_re_returns_400(self):
+        data = dict(self.common, mode="emitter", rb="1000k", rb_unit="kohm")
+        resp = self.client.post("/", data=data)
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("re".encode("utf-8"), resp.data)

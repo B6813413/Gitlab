@@ -1,6 +1,9 @@
 import unittest
 
-from dc_bias import dc_operating_point, parse_resistance, validate_inputs
+from dc_bias import (
+    compute_bias, dc_operating_point, emitter_bias, fixed_bias,
+    parse_resistance, validate_inputs,
+)
 
 
 class TestDCOperatingPoint(unittest.TestCase):
@@ -132,3 +135,152 @@ class TestValidateInputsWithUnits(unittest.TestCase):
 
     def test_invalid_kohm_value_is_rejected(self):
         self.assertIn("r2", validate_inputs(self.base(r2="abc")))
+
+
+class TestFixedBias(unittest.TestCase):
+    """Fixed Bias — คำนวณมืออิสระ (อิสระจากเว็บแอปที่ทดสอบ).
+
+    VCC=12 V, RC=2.2 kΩ, β=100, VBE=0.70 V, RB=1 MΩ
+    IB = (12 − 0.70) / 1,000,000 = 11.3 µA
+    IC = 100 × IB = 1.13 mA; VE = 0; VB = 0.70 V
+    VC = 12 − 1.13 mA × 2.2 kΩ = 9.514 V; VCE = 9.514 V
+    """
+
+    def test_fixed_bias_matches_hand_calculation(self):
+        r = fixed_bias(12.0, 2200.0, 100.0, 0.7, 1_000_000.0)
+        self.assertAlmostEqual(r["ib"], 1.13e-05, places=12)
+        self.assertAlmostEqual(r["ic"], 1.13e-03, places=12)
+        self.assertAlmostEqual(r["ie"], 1.1413e-03, places=12)
+        self.assertAlmostEqual(r["ve"], 0.0, places=12)
+        self.assertAlmostEqual(r["vb"], 0.7, places=12)
+        self.assertAlmostEqual(r["vc"], 9.514, places=9)
+        self.assertAlmostEqual(r["vce"], 9.514, places=9)
+        self.assertEqual(r["region"], "active")
+        self.assertIsNone(r["warning"])
+
+class TestEmitterBias(unittest.TestCase):
+    """Emitter Bias — คำนวณมืออิสระ (อิสระจากเว็บแอปที่ทดสอบ).
+
+    VCC=12 V, RC=2.2 kΩ, β=100, VBE=0.70 V, RB=1 MΩ, RE=1 kΩ
+    IB = (12 − 0.70) / [1,000,000 + 101 × 1,000] ≈ 10.2634 µA
+    IC = 100 × IB ≈ 1.0263 mA
+    VE = IE × RE ≈ 1.0366 V; VB ≈ 1.7366 V
+    VC = 12 − IC × 2.2 kΩ ≈ 9.7421 V; VCE ≈ 8.7054 V
+    """
+
+    def test_emitter_bias_matches_hand_calculation(self):
+        r = emitter_bias(12.0, 2200.0, 100.0, 0.7, 1_000_000.0, 1000.0)
+        self.assertAlmostEqual(r["ib"], 1.02633969e-05, places=10)
+        self.assertAlmostEqual(r["ic"], 1.02633969e-03, places=10)
+        self.assertAlmostEqual(r["ie"], 1.03660309e-03, places=10)
+        self.assertAlmostEqual(r["ve"], 1.03660309, places=7)
+        self.assertAlmostEqual(r["vb"], 1.73660309, places=7)
+        self.assertAlmostEqual(r["vc"], 9.74205268, places=7)
+        self.assertAlmostEqual(r["vce"], 8.70544959, places=7)
+        self.assertEqual(r["region"], "active")
+        self.assertIsNone(r["warning"])
+
+    def test_emitter_bias_higher_re_lowers_ic(self):
+        # เปลี่ยน RE จาก 1 kΩ → 2 kΩ: IC ต้องลดลง (ทิศทางเดียวกับกรณี A4)
+        r1k = emitter_bias(12.0, 2200.0, 100.0, 0.7, 1_000_000.0, 1000.0)
+        r2k = emitter_bias(12.0, 2200.0, 100.0, 0.7, 1_000_000.0, 2000.0)
+        self.assertLess(r2k["ic"], r1k["ic"])
+        self.assertGreater(r2k["ve"], r1k["ve"])
+        # VCE = VC - VE: เมื่อ RE มากขึ้น VE เพิ่มมากกว่าที่ VC เพิ่ม → VCE ลดลง
+        self.assertLess(r2k["vce"], r1k["vce"])
+
+
+class TestComputeBiasDispatch(unittest.TestCase):
+    """compute_bias เลือกฟังก์ชันตามโหมด; โหมดไม่รู้จักต้องแจ้งข้อผิดพลาด."""
+
+    def test_voltage_divider_unchanged(self):
+        r = compute_bias("voltage_divider", {
+            "vcc": 12.0, "r1": 100000.0, "r2": 22000.0, "rc": 2200.0,
+            "re": 1000.0, "beta": 100.0, "vbe": 0.7,
+        })
+        self.assertEqual(r["mode"], "voltage_divider")
+        self.assertAlmostEqual(r["ic"], 0.0012298581462608458, places=12)
+        self.assertAlmostEqual(r["vce"], 8.052155350502685, places=9)
+        self.assertIsNone(r["error"])
+
+    def test_fixed_via_compute_bias(self):
+        r = compute_bias("fixed", {
+            "vcc": 12.0, "rc": 2200.0, "beta": 100.0, "vbe": 0.7, "rb": 1_000_000.0,
+        })
+        self.assertEqual(r["mode"], "fixed")
+        self.assertAlmostEqual(r["ic"], 1.13e-03, places=12)
+        self.assertAlmostEqual(r["vce"], 9.514, places=9)
+        self.assertIsNone(r["error"])
+
+    def test_emitter_via_compute_bias(self):
+        r = compute_bias("emitter", {
+            "vcc": 12.0, "rc": 2200.0, "beta": 100.0, "vbe": 0.7,
+            "rb": 1_000_000.0, "re": 1000.0,
+        })
+        self.assertEqual(r["mode"], "emitter")
+        self.assertAlmostEqual(r["ic"], 1.02633969e-03, places=10)
+        self.assertAlmostEqual(r["vce"], 8.70544959, places=7)
+        self.assertIsNone(r["error"])
+
+    def test_unknown_mode_returns_error(self):
+        r = compute_bias("bogus_mode", {
+            "vcc": 12.0, "rc": 2200.0, "beta": 100.0, "vbe": 0.7,
+        })
+        self.assertIsNotNone(r["error"])
+        self.assertIn("ไม่รู้จัก", r["error"])
+
+    def test_missing_common_input_returns_error(self):
+        r = compute_bias("fixed", {"vcc": 12.0, "rc": 2200.0, "beta": 100.0})
+        self.assertIsNotNone(r["error"])
+
+
+class TestValidateInputsPerMode(unittest.TestCase):
+    """validate_inputs ตรวจเฉพาะช่องที่จำเป็นของโหมดนั้น (Lab 03)."""
+
+    def base_divider(self):
+        return {"vcc": "12", "r1": "100k", "r2": "22k", "rc": "2.2k",
+                "re": "1k", "beta": "100", "vbe": "0.7"}
+
+    def base_fixed(self):
+        return {"vcc": "12", "rc": "2.2k", "rb": "1000k", "beta": "100", "vbe": "0.7"}
+
+    def base_emitter(self):
+        return {"vcc": "12", "rc": "2.2k", "rb": "1000k", "re": "1k",
+                "beta": "100", "vbe": "0.7"}
+
+    def test_divider_valid_no_errors(self):
+        self.assertEqual(validate_inputs(self.base_divider(), "voltage_divider"), {})
+
+    def test_fixed_valid_no_errors(self):
+        self.assertEqual(validate_inputs(self.base_fixed(), "fixed"), {})
+
+    def test_emitter_valid_no_errors(self):
+        self.assertEqual(validate_inputs(self.base_emitter(), "emitter"), {})
+
+    def test_fixed_does_not_require_r1_r2(self):
+        # Fixed Bias ไม่ต้องกรอก R1/R2 → ต้องไม่มีข้อผิดพลาดเรื่อง r1/r2
+        data = self.base_fixed()
+        errors = validate_inputs(data, "fixed")
+        self.assertNotIn("r1", errors)
+        self.assertNotIn("r2", errors)
+
+    def test_fixed_requires_rb(self):
+        data = self.base_fixed()
+        data["rb"] = ""
+        self.assertIn("rb", validate_inputs(data, "fixed"))
+
+    def test_emitter_requires_rb_and_re(self):
+        data = self.base_emitter()
+        data["rb"] = ""
+        self.assertIn("rb", validate_inputs(data, "emitter"))
+        data = self.base_emitter()
+        data["re"] = ""
+        self.assertIn("re", validate_inputs(data, "emitter"))
+
+    def test_fixed_rb_zero_rejected(self):
+        data = self.base_fixed()
+        data["rb"] = "0"
+        self.assertIn("rb", validate_inputs(data, "fixed"))
+
+    def test_unknown_mode_rejected(self):
+        self.assertIn("mode", validate_inputs({}, "bogus_mode"))

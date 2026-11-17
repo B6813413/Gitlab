@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lab 02: BJT DC Bias Web App — ENG29 2121</title>
+  <title>Lab 03: BJT DC Bias Web App — ENG29 2121</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -20,8 +20,8 @@
         <rect x="19" y="19" width="10" height="10" fill="#0f6b78"/>
       </svg>
       <div>
-        <h1>Lab 02: BJT DC Bias Web App</h1>
-        <p>ENG29 2121 – Common Emitter (Voltage Divider Bias)</p>
+        <h1>Lab 03: BJT DC Bias Web App</h1>
+        <p>ENG29 2121 – Common Emitter · เลือกวงจรไบอัสได้สามแบบ</p>
       </div>
     </div>
     <div class="course-badge">
@@ -35,6 +35,20 @@
     <section class="panel panel-input">
       <h2><span class="icon icon-accent">⚙️</span> Input Parameters</h2>
       <form method="post" novalidate>
+        <form method="get" action="/" style="margin:0 0 1rem 0;border:none;background:none;padding:0;box-shadow:none;">
+          <div class="field">
+            <label for="mode">เลือกวงจรไบอัส (Bias mode)</label>
+            <div class="control">
+              <select name="mode" id="mode" onchange="this.form.submit()">
+                {% for key, label in mode_labels.items() %}
+                  <option value="{{ key }}" {% if mode == key %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <p class="unit-note" style="text-align:left">เปลี่ยนโหมดแล้วฟอร์มจะโหลดใหม่ แสดงเฉพาะช่องที่ใช้กับโหมดนั้น (ผลรอบก่อนจะถูกล้าง)</p>
+        </form>
+
         <div class="field">
           <label for="vcc">V<sub>CC</sub> (Supply Voltage)</label>
           <div class="control">
@@ -45,14 +59,15 @@
           {% if errors and errors.vcc %}<p class="field-error">{{ errors.vcc }}</p>{% endif %}
         </div>
 
+        {% if mode == "voltage_divider" %}
         <div class="field">
           <label for="r1">R<sub>1</sub> (Upper Divider)</label>
           <div class="control">
             <input id="r1" name="r1" type="text" inputmode="decimal" placeholder="100"
                    value="{{ values.get('r1', '100') }}" required>
             <select name="r1_unit" aria-label="R1 unit">
-              <option value="kohm" {{ 'selected' if values.get('r1_unit', 'kohm') == 'kohm' else '' }}>kΩ</option>
-              <option value="ohm" {{ 'selected' if values.get('r1_unit', 'kohm') == 'ohm' else '' }}>Ω</option>
+              <option value="kohm" {% if values.get('r1_unit', 'kohm') == 'kohm' %}selected{% endif %}>kΩ</option>
+              <option value="ohm" {% if values.get('r1_unit', 'kohm') == 'ohm' %}selected{% endif %}>Ω</option>
             </select>
           </div>
           {% if errors and errors.r1 %}<p class="field-error">{{ errors.r1 }}</p>{% endif %}
@@ -64,12 +79,30 @@
             <input id="r2" name="r2" type="text" inputmode="decimal" placeholder="22"
                    value="{{ values.get('r2', '22') }}" required>
             <select name="r2_unit" aria-label="R2 unit">
-              <option value="kohm" {{ 'selected' if values.get('r2_unit', 'kohm') == 'kohm' else '' }}>kΩ</option>
-              <option value="ohm" {{ 'selected' if values.get('r2_unit', 'kohm') == 'ohm' else '' }}>Ω</option>
+              <option value="kohm" {% if values.get('r2_unit', 'kohm') == 'kohm' %}selected{% endif %}>kΩ</option>
+              <option value="ohm" {% if values.get('r2_unit', 'kohm') == 'ohm' %}selected{% endif %}>Ω</option>
             </select>
           </div>
           {% if errors and errors.r2 %}<p class="field-error">{{ errors.r2 }}</p>{% endif %}
         </div>
+        {% else %}
+        <div class="field" style="opacity:0.55">
+          <label for="r1">R<sub>1</sub> (Upper Divider) · ไม่ใช้ในโหมดนี้</label>
+          <div class="control">
+            <input id="r1" name="r1" type="text" inputmode="decimal" placeholder="100"
+                   value="{{ values.get('r1', '100') }}" disabled>
+            <select name="r1_unit" disabled><option>kΩ</option><option>Ω</option></select>
+          </div>
+        </div>
+        <div class="field" style="opacity:0.55">
+          <label for="r2">R<sub>2</sub> (Lower Divider) · ไม่ใช้ในโหมดนี้</label>
+          <div class="control">
+            <input id="r2" name="r2" type="text" inputmode="decimal" placeholder="22"
+                   value="{{ values.get('r2', '22') }}" disabled>
+            <select name="r2_unit" disabled><option>kΩ</option><option>Ω</option></select>
+          </div>
+        </div>
+        {% endif %}
 
         <div class="field">
           <label for="rc">R<sub>C</sub> (Collector Resistor)</label>
@@ -77,25 +110,60 @@
             <input id="rc" name="rc" type="text" inputmode="decimal" placeholder="2.2"
                    value="{{ values.get('rc', '2.2') }}" required>
             <select name="rc_unit" aria-label="RC unit">
-              <option value="kohm" {{ 'selected' if values.get('rc_unit', 'kohm') == 'kohm' else '' }}>kΩ</option>
-              <option value="ohm" {{ 'selected' if values.get('rc_unit', 'kohm') == 'ohm' else '' }}>Ω</option>
+              <option value="kohm" {% if values.get('rc_unit', 'kohm') == 'kohm' %}selected{% endif %}>kΩ</option>
+              <option value="ohm" {% if values.get('rc_unit', 'kohm') == 'ohm' %}selected{% endif %}>Ω</option>
             </select>
           </div>
           {% if errors and errors.rc %}<p class="field-error">{{ errors.rc }}</p>{% endif %}
         </div>
 
+        {% if mode in ("voltage_divider", "emitter") %}
         <div class="field">
           <label for="re">R<sub>E</sub> (Emitter Resistor)</label>
           <div class="control">
             <input id="re" name="re" type="text" inputmode="decimal" placeholder="1"
                    value="{{ values.get('re', '1') }}" required>
             <select name="re_unit" aria-label="RE unit">
-              <option value="kohm" {{ 'selected' if values.get('re_unit', 'kohm') == 'kohm' else '' }}>kΩ</option>
-              <option value="ohm" {{ 'selected' if values.get('re_unit', 'kohm') == 'ohm' else '' }}>Ω</option>
+              <option value="kohm" {% if values.get('re_unit', 'kohm') == 'kohm' %}selected{% endif %}>kΩ</option>
+              <option value="ohm" {% if values.get('re_unit', 'kohm') == 'ohm' %}selected{% endif %}>Ω</option>
             </select>
           </div>
           {% if errors and errors.re %}<p class="field-error">{{ errors.re }}</p>{% endif %}
         </div>
+        {% else %}
+        <div class="field" style="opacity:0.55">
+          <label for="re">R<sub>E</sub> (Emitter Resistor) · ไม่ใช้ใน Fixed Bias (VE = 0)</label>
+          <div class="control">
+            <input id="re" name="re" type="text" inputmode="decimal" placeholder="1"
+                   value="{{ values.get('re', '1') }}" disabled>
+            <select name="re_unit" disabled><option>kΩ</option><option>Ω</option></select>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if mode in ("fixed", "emitter") %}
+        <div class="field">
+          <label for="rb">R<sub>B</sub> (Base Resistor)</label>
+          <div class="control">
+            <input id="rb" name="rb" type="text" inputmode="decimal" placeholder="1000"
+                   value="{{ values.get('rb', '1000') }}" required>
+            <select name="rb_unit" aria-label="RB unit">
+              <option value="kohm" {% if values.get('rb_unit', 'kohm') == 'kohm' %}selected{% endif %}>kΩ</option>
+              <option value="ohm" {% if values.get('rb_unit', 'kohm') == 'ohm' %}selected{% endif %}>Ω</option>
+            </select>
+          </div>
+          {% if errors and errors.rb %}<p class="field-error">{{ errors.rb }}</p>{% endif %}
+        </div>
+        {% else %}
+        <div class="field" style="opacity:0.55">
+          <label for="rb">R<sub>B</sub> (Base Resistor) · ไม่ใช้ใน Voltage Divider</label>
+          <div class="control">
+            <input id="rb" name="rb" type="text" inputmode="decimal" placeholder="1000"
+                   value="{{ values.get('rb', '1000') }}" disabled>
+            <select name="rb_unit" disabled><option>kΩ</option><option>Ω</option></select>
+          </div>
+        </div>
+        {% endif %}
 
         <div class="field">
           <label for="beta">β (Current Gain)</label>
@@ -124,17 +192,22 @@
 
     <!-- Circuit diagram -->
     <section class="panel panel-circuit">
-      <h2><span class="icon icon-accent">🔗</span> Circuit: Common-Emitter Amplifier</h2>
-      <svg class="schematic" viewBox="0 0 340 330" role="img" aria-label="Voltage-divider bias circuit">
+      <h2><span class="icon icon-accent">🔗</span> Circuit: Common-Emitter Amplifier
+        <span class="unit-note" style="float:right">[{{ mode_labels[mode] }}]</span>
+      </h2>
+      <svg class="schematic" viewBox="0 0 340 330" role="img" aria-label="Common-emitter bias circuit">
         <text x="250" y="18" text-anchor="middle" class="t-dim">V<tspan baseline-shift="sub" font-size="10">CC</tspan> = {{ diagram.vcc }}</text>
         <line x1="85" y1="45" x2="250" y2="45" class="wire"/>
 
+        {% if mode == "voltage_divider" %}
+        <!-- R1 from VCC to Base -->
         <line x1="85" y1="45" x2="85" y2="66" class="wire"/>
         <rect x="72" y="66" width="26" height="56" rx="3" class="comp"/>
         <text x="62" y="88" text-anchor="end" class="t-name">R<tspan baseline-shift="sub" font-size="10">1</tspan></text>
         <text x="62" y="106" text-anchor="end" class="t-value">{{ diagram.r1 }}</text>
         <line x1="85" y1="122" x2="85" y2="160" class="wire"/>
 
+        <!-- R2 from Base to ground -->
         <rect x="72" y="196" width="26" height="56" rx="3" class="comp"/>
         <text x="62" y="218" text-anchor="end" class="t-name">R<tspan baseline-shift="sub" font-size="10">2</tspan></text>
         <text x="62" y="236" text-anchor="end" class="t-value">{{ diagram.r2 }}</text>
@@ -143,8 +216,23 @@
         <line x1="70" y1="292" x2="100" y2="292" class="wire"/>
         <line x1="75" y1="297" x2="95" y2="297" class="wire"/>
         <line x1="80" y1="302" x2="90" y2="302" class="wire"/>
+        {% else %}
+        <!-- RB from VCC to Base -->
+        <line x1="85" y1="45" x2="85" y2="66" class="wire"/>
+        <rect x="72" y="66" width="26" height="56" rx="3" class="comp"/>
+        <text x="62" y="88" text-anchor="end" class="t-name">R<tspan baseline-shift="sub" font-size="10">B</tspan></text>
+        <text x="62" y="106" text-anchor="end" class="t-value">{{ diagram.rb }}</text>
+        <line x1="85" y1="122" x2="85" y2="160" class="wire"/>
+        <!-- Base node directly, no divider to ground -->
+        <line x1="85" y1="160" x2="85" y2="292" class="wire"/>
+        <line x1="70" y1="292" x2="100" y2="292" class="wire"/>
+        <line x1="75" y1="297" x2="95" y2="297" class="wire"/>
+        <line x1="80" y1="302" x2="90" y2="302" class="wire"/>
+        {% endif %}
+
         <circle cx="85" cy="160" r="4" class="node"/>
 
+        <!-- Collector branch -->
         <line x1="250" y1="45" x2="250" y2="55" class="wire"/>
         <rect x="237" y="55" width="26" height="55" rx="3" class="comp"/>
         <text x="268" y="77" class="t-name">R<tspan baseline-shift="sub" font-size="10">C</tspan></text>
@@ -161,22 +249,31 @@
         <polygon points="200,210 185.5,204 190.5,194.5" class="arrow"/>
         <line x1="200" y1="210" x2="250" y2="210" class="wire"/>
         <circle cx="250" cy="210" r="4" class="node"/>
-        <text x="180" y="237" text-anchor="middle" class="t-name">Q<tspan baseline-shift="sub" font-size="10">1</tspan></text>
-        <text x="180" y="255" text-anchor="middle" class="t-value">NPN (β = {{ diagram.beta }})</text>
 
+        {% if mode in ("voltage_divider", "emitter") %}
+        <!-- RE from Emitter to ground -->
         <rect x="237" y="210" width="26" height="56" rx="3" class="comp"/>
         <text x="268" y="233" class="t-name">R<tspan baseline-shift="sub" font-size="10">E</tspan></text>
         <text x="268" y="251" class="t-value">{{ diagram.re }}</text>
+        {% else %}
+        <!-- Fixed bias: emitter directly to ground (no RE) -->
+        <rect x="237" y="210" width="26" height="20" rx="3" class="comp"/>
+        <text x="268" y="225" class="t-name">GND</text>
+        {% endif %}
         <line x1="250" y1="266" x2="250" y2="292" class="wire"/>
         <line x1="235" y1="292" x2="265" y2="292" class="wire"/>
         <line x1="240" y1="297" x2="260" y2="297" class="wire"/>
         <line x1="245" y1="302" x2="255" y2="302" class="wire"/>
+        <text x="180" y="237" text-anchor="middle" class="t-name">Q<tspan baseline-shift="sub" font-size="10">1</tspan></text>
+        <text x="180" y="255" text-anchor="middle" class="t-value">NPN (β = {{ diagram.beta }})</text>
       </svg>
     </section>
 
     <!-- Results -->
     <section class="panel panel-results">
-      <h2><span class="icon icon-accent">📊</span> DC Bias Results</h2>
+      <h2><span class="icon icon-accent">📊</span> DC Bias Results
+        <span class="unit-note" style="float:right">[{{ result.mode if result else mode_labels[mode] }}]</span>
+      </h2>
       {% if not result %}
       <div class="empty-state">
         <p>Fill in the component values, then press <strong>Calculate DC Bias</strong>.</p>
@@ -185,6 +282,12 @@
       {% else %}
       <table class="results-table">
         <tbody>
+          {% if result.vth not in (None, "") %}
+          <tr><th>V<sub>TH</sub> (Thevenin)</th><td>{{ result.vth }}</td></tr>
+          {% endif %}
+          {% if result.rth not in (None, "") %}
+          <tr><th>R<sub>TH</sub> (Thevenin)</th><td>{{ result.rth }}</td></tr>
+          {% endif %}
           <tr><th>V<sub>B</sub></th><td>{{ result.vb }}</td></tr>
           <tr><th>V<sub>E</sub></th><td>{{ result.ve }}</td></tr>
           <tr><th>V<sub>C</sub></th><td>{{ result.vc }}</td></tr>
@@ -207,15 +310,22 @@
         <div><strong>Saturation — Forward-Active approximation not valid</strong><br>
         V<sub>CE</sub> = {{ result.vce }} &lt; 0.2 V; IC ≈ IC(sat) = {{ result.ic_sat }}</div>
       </div>
-      {% else %}
+      {% elif result.region == "cutoff" %}
       <div class="banner banner-danger">
         <span class="banner-icon">⚠</span>
         <div><strong>Cutoff — Forward-Active approximation not valid</strong><br>
-        V<sub>TH</sub> ≤ V<sub>BE</sub>; transistor is off</div>
+        V<sub>TH</sub> ≤ V<sub>BE</sub> (or IB ≤ 0); transistor is off</div>
       </div>
       {% endif %}
 
-      <p class="intermediate">Intermediate — V<sub>TH</sub> = {{ result.vth }} · R<sub>TH</sub> = {{ result.rth }}</p>
+      {% if result.warning %}
+      <div class="banner banner-danger" style="margin-top:0.5rem">
+        <span class="banner-icon">⚠</span>
+        <div><strong>คำเตือนแบบจำลอง:</strong> {{ result.warning }}</div>
+      </div>
+      {% endif %}
+
+      <p class="intermediate">โหมดที่คำนวณ: <strong>{{ result.mode }}</strong></p>
       {% endif %}
     </section>
   </main>
@@ -227,10 +337,10 @@
       <circle cx="12" cy="12" r="2.4" fill="#1f5f9e"/>
     </svg></span>
     <div>
-      <span class="goal-label">Week 2 Goal</span>
-      <span class="goal-text">Rough target for this lab: Build a Flask web app that takes the circuit parameters,
-        computes the BJT DC bias (V<sub>B</sub>, V<sub>E</sub>, V<sub>C</sub>, V<sub>CE</sub>, I<sub>B</sub>, I<sub>C</sub>, I<sub>E</sub>)
-        for a common-emitter amplifier with voltage-divider bias, and displays the results.</span>
+      <span class="goal-label">Week 3 Goal (Lab 03)</span>
+      <span class="goal-text">เว็บแอป Flask หน้าเดียว เลือกวงจรไบอัส BJT Common Emitter ได้สามแบบ
+        (Voltage Divider / Fixed / Emitter แหล่งจ่ายเดียว) คำนวณจุดทำงาน DC ด้วย Python
+        แยกฟังก์ชันใน dc_bias.py แสดงผลพร้อมหน่วย และตรวจอินพุตต่อโหมด</span>
     </div>
   </footer>
 </body>
