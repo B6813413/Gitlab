@@ -108,7 +108,7 @@ python -m unittest discover -s tests -v
 ```
 
 ```text
-Ran 131 tests in 0.081s
+Ran 135 tests in 0.089s
 OK
 ```
 
@@ -119,7 +119,8 @@ parser สำหรับ DC/AC/transient, runner (mock, มี regression ท�
 (ช่อง Lab 03 ถูกปิด / ภาพ CE Reference / R1-R2-RE เปิดและ RB ปิดในทุกโหมด),
 mobile chart/caption tests, `<html lang="th">`, AC gain/phase ที่อ้าง Vin,
 การปฏิเสธหน่วย `k` ของ C (µF เท่านั้น), analysis ไม่รู้จักที่คืน 400 ทั้ง GET/POST,
-model ที่เป็น `<select>` คงที่ และ caption ระบุ sweep 10 Hz–1 MHz
+model ที่เป็น `<select>` คงที่, caption ระบุ sweep 10 Hz–1 MHz,
+ช่องที่ล้างค่าได้ข้อความ `กรุณากรอกค่านี้` (400) และช่องที่ไม่ส่งมาคงค่า default
 
 ## Lab 03 A1–A5 (historical — ยังผ่านอยู่ใน B1)
 
@@ -148,11 +149,14 @@ model ที่เป็น `<select>` คงที่ และ caption ระ�
   กับ `cin/cout` จึงปฏิเสธ `10k` (หน่วย k เป็นของ R ไม่ใช่ µF), `app.py` คืน HTTP 400
   สำหรับ `?analysis=bogus` ทั้ง GET/POST แทน render หน้าเดิมด้วย 200, ช่อง model เปลี่ยน
   จาก free-text เป็น `<select>` QNPN เดียวตาม netlist และ caption Bode ระบุ sweep 10 Hz–1 MHz
-  (มี test รองรับทุกกรณี)
+- **บั๊กฟอร์มที่ review พบเพิ่ม:** ช่องที่ผู้ใช้ล้างค่า (`""`) ถูก `_spice_params()` แทนที่ด้วยค่า
+  default เงียบ ๆ แล้วส่งให้ ngspice (ได้ 502 แทน 400) → แยกกรณี `None` (ไม่ส่งมา → ใช้ default)
+  ออกจาก `""` (ส่งมา → ต้อง error และ echo `value=""`), และ `validate_spice_inputs()` ใช้ข้อความ
+  `กรุณากรอกค่านี้` สำหรับ C ที่เว้นว่างตามมาตรฐาน Lab 03 (มี test ครอบทั้ง 2 กรณี)
 - **hardening เพิ่มระหว่างตรวจ:** ตะแกร่งความถี่ของ Bode ถูกปรับให้ตรงสเกลลอการิทึม
   (commit `7570de8`), SPICE POST ส่งค่ากรอกกลับมาทุก branch (commit `b0fb534`)
   และ code review รอบสุดท้ายเพิ่ม test สำหรับ SPICE UI/mobile chart/caption/CE fields/`lang`
-  → รวม 131 tests
+  → รวม 135 tests
 - **บั๊ก UI ที่ review พบแล้วแก้:** ตอนใช้ SPICE หน้าเว็บยังโชว์ช่อง `mode/β/VBE` แบบ
   Required และภาพวงจรตามโหมด Lab 03 ทั้งที่ engine ไม่รับค่าเหล่านั้น → ปิดช่อง,
   ตรึงภาพเป็น CE Reference และระบุว่า β=100 มาจาก `.model`; อีกกรณีคือโหมด Fixed/Emitter

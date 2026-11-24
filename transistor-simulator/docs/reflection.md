@@ -56,7 +56,7 @@
 ตรวจ 3 ชั้น:
 1. **คำนวณมืออิสระ** ก่อนรัน — A2: IB=11.3/1M=11.30 µA → IC=1.130 mA;
    A3: 11.3/(1M+101×1k)=10.263 µA → IC=1.026 mA; A4 เปลี่ยน RE=2k → IC=0.940 mA
-2. **unit tests** 62 tests ในรอบ Lab 03 รันผ่าน (ตัวเลข historic; ปัจจุบันรวม Lab 04 คือ 131 tests)
+2. **unit tests** 62 tests ในรอบ Lab 03 รันผ่าน (ตัวเลข historic; ปัจจุบันรวม Lab 04 คือ 135 tests)
    (`python -m unittest discover -s tests -v`)
 3. **browser จริง** A1–A5 ผ่าน OpenCode Browser Tool อ่าน snapshot หลังส่งฟอร์ม
 

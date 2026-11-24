@@ -94,7 +94,7 @@ python -m flask --app app run --debug
 python -m unittest discover -s tests -v
 ```
 
-ผลล่าสุด: **Ran 131 tests ... OK** (รันจากโฟลเดอร์ `transistor-simulator/`)
+ผลล่าสุด: **Ran 135 tests ... OK** (รันจากโฟลเดอร์ `transistor-simulator/`)
 
 ## โมเดลและหน่วยที่ใช้
 

@@ -128,7 +128,7 @@ transistor-simulator/
 
 ## 10. Test strategy + ค่าอ้างอิง
 
-62 tests ในรอบ Lab 03 (historic; ปัจจุบันรวม Lab 04 คือ 131 tests): math
+62 tests ในรอบ Lab 03 (historic; ปัจจุบันรวม Lab 04 คือ 135 tests): math
 (3 โหมดเทียบ hand calc, saturation/cutoff/β=1), parsing, validation
 per-mode, dispatch, formatter, HTTP 200/400, form structure, browser regression cases
 
