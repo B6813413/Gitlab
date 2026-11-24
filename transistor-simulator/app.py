@@ -118,6 +118,9 @@ def build_diagram(values: dict, mode: str) -> dict:
         "re": res("re", "1"),
         "rb": res("rb", "1000"),
         "beta": num("beta", "100"),
+        "cin": f"{num('cin', '10')} µF",
+        "cout": f"{num('cout', '10')} µF",
+        "rl": res("rl", "10"),
         "mode": mode,
     }
 

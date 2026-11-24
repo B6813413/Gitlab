@@ -1,8 +1,12 @@
+import re
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from app import app
 
+
+SPICE_ANALYSES = ("spice_dc", "spice_ac", "spice_tran")
 
 BASE_FIELDS = {
     "analysis": "spice_dc", "mode": "voltage_divider",
@@ -146,3 +150,126 @@ class TestSpiceDispatch(unittest.TestCase):
         html = self.client.post("/", data=BASE_FIELDS).get_data(as_text=True)
         self.assertNotIn("Calculate DC Bias", html)
         self.assertIn("การวิเคราะห์นี้ใช้ ngspice", html)
+
+
+CSS_PATH = Path(__file__).resolve().parent.parent / "static" / "style.css"
+CAPTION_RE = re.compile(r'<p class="chart-caption">(.*?)</p>', re.S)
+
+
+def caption_texts(html):
+    return CAPTION_RE.findall(html)
+
+
+class TestMobileChartLegibility(unittest.TestCase):
+    def setUp(self):
+        app.testing = True
+        self.client = app.test_client()
+
+    def test_880px_block_keeps_chart_svg_native_width(self):
+        css = CSS_PATH.read_text(encoding="utf-8")
+        block = re.search(
+            r"@media \(max-width: 880px\)\s*\{(.*?)\n\}", css, re.S)
+        self.assertIsNotNone(block, "missing 880px media query")
+        mobile = block.group(1)
+        self.assertNotRegex(
+            mobile, r"\.chart\s+svg\s*\{[^}]*min-width\s*:\s*0")
+        widths = re.findall(
+            r"\.chart\s+svg\s*\{[^}]*min-width\s*:\s*([0-9.]+)px", mobile)
+        self.assertTrue(widths, "mobile rule should set a chart min-width")
+        for width in widths:
+            self.assertGreaterEqual(float(width), 760)
+
+    def test_mobile_chart_scrolls_inside_panel_without_page_growth(self):
+        css = CSS_PATH.read_text(encoding="utf-8")
+        block = re.search(r"@media \(max-width: 880px\)\s*\{(.*?)\n\}", css, re.S)
+        self.assertIsNotNone(block)
+        self.assertRegex(block.group(1), r"\.layout\s*\{[^}]*minmax\(0,\s*1fr\)")
+        panel = re.search(r"\.panel\s*\{([^}]*)\}", css)
+        self.assertIsNotNone(panel)
+        self.assertRegex(panel.group(1), r"min-width\s*:\s*0")
+        chart = re.search(r"\.chart\s*\{([^}]*)\}", css)
+        self.assertIsNotNone(chart)
+        self.assertRegex(chart.group(1), r"overflow-x\s*:\s*auto")
+        self.assertRegex(chart.group(1), r"max-width\s*:\s*100%")
+
+    @patch("app.run_analysis")
+    def test_bode_caption_only_claims_log_frequency(self, mock_run):
+        mock_run.return_value = result(
+            analysis="ac",
+            series=[{"freq": 100, "gain_db": -3, "phase_deg": -170},
+                    {"freq": 1000, "gain_db": -5, "phase_deg": -180}])
+        html = self.client.post(
+            "/", data=dict(BASE_FIELDS, analysis="spice_ac")).get_data(
+                as_text=True)
+        captions = caption_texts(html)
+        self.assertEqual(len(captions), 1)
+        caption = captions[0]
+        self.assertIn("ลอการิทึม", caption)
+        self.assertNotIn("ms", caption)
+        self.assertNotIn("แกนเวลา", caption)
+
+    @patch("app.run_analysis")
+    def test_transient_caption_only_claims_ms_time(self, mock_run):
+        mock_run.return_value = result(
+            analysis="tran",
+            series=[{"time": 0, "vin": 0.01, "vout": -0.1},
+                    {"time": 0.001, "vin": 0.02, "vout": -0.2}])
+        html = self.client.post(
+            "/", data=dict(BASE_FIELDS, analysis="spice_tran")).get_data(
+                as_text=True)
+        captions = caption_texts(html)
+        self.assertEqual(len(captions), 1)
+        caption = captions[0]
+        self.assertIn("ms", caption)
+        self.assertNotIn("ลอการิทึม", caption)
+
+    def test_spice_analyses_disable_lab03_only_controls(self):
+        # _spice_params() ignores mode/beta/vbe, so the form must not require them.
+        for name in SPICE_ANALYSES:
+            with self.subTest(analysis=name):
+                html = self.client.get(
+                    f"/?mode=fixed&analysis={name}"
+                ).get_data(as_text=True)
+                self.assertIn("ไม่ใช้ใน SPICE", html)
+                self.assertRegex(html, r'<select name="mode"[^>]*\bdisabled\b')
+                self.assertRegex(html, r'<input id="beta"[^>]*\bdisabled\b')
+                self.assertRegex(html, r'<input id="vbe"[^>]*\bdisabled\b')
+                self.assertNotRegex(html, r'<input id="beta"[^>]*\brequired\b')
+                self.assertNotRegex(html, r'<input id="vbe"[^>]*\brequired\b')
+
+    def test_spice_uses_ce_reference_schematic_for_all_modes(self):
+        # SPICE netlist is always the CE reference circuit, never the Lab 03 mode.
+        for chosen_mode in ("voltage_divider", "fixed", "emitter"):
+            with self.subTest(mode=chosen_mode):
+                html = self.client.get(
+                    f"/?mode={chosen_mode}&analysis=spice_dc"
+                ).get_data(as_text=True)
+                match = re.search(r'<svg class="schematic".*?</svg>', html, re.S)
+                self.assertIsNotNone(match)
+                svg = match.group(0)
+                self.assertIn("[CE Reference]", html)
+                self.assertIn(
+                    'aria-label="Common-emitter amplifier reference circuit"', html
+                )
+                # Divider + RE of the reference circuit, not RB or fixed-bias GND.
+                self.assertIn(
+                    'R<tspan baseline-shift="sub" font-size="10">1</tspan>', svg
+                )
+                self.assertIn(
+                    'R<tspan baseline-shift="sub" font-size="10">E</tspan>', svg
+                )
+                self.assertNotIn(
+                    'R<tspan baseline-shift="sub" font-size="10">B</tspan>', svg
+                )
+                self.assertNotIn("GND", svg)
+                self.assertIn("β = 100 จาก .model", html)
+                for marker in ("CIN 10 µF", "COUT 10 µF", "RL 10 kΩ"):
+                    self.assertIn(marker, html)
+
+    def test_analytical_mode_keeps_lab03_controls_active(self):
+        html = self.client.get("/?mode=fixed&analysis=bias").get_data(as_text=True)
+        self.assertRegex(html, r'<select name="mode"[^>]*onchange=')
+        self.assertNotRegex(html, r'<select name="mode"[^>]*\bdisabled\b')
+        self.assertRegex(html, r'<input id="beta"[^>]*\brequired\b')
+        self.assertRegex(html, r'<input id="vbe"[^>]*\brequired\b')
+        self.assertNotIn("[CE Reference]", html)

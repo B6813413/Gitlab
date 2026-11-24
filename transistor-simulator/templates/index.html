@@ -31,15 +31,16 @@
   </header>
 
   <main class="layout">
+    {% set is_spice = analysis != "bias" %}
     <!-- Input Parameters -->
     <section class="panel panel-input">
       <h2><span class="icon icon-accent">⚙️</span> Input Parameters</h2>
       <form method="get" action="/" class="mode-form analysis-form">
         <div class="analysis-picker">
         <div class="field">
-          <label for="mode">เลือกวงจรไบอัส (Bias mode)</label>
+          <label for="mode">เลือกวงจรไบอัส (Bias mode){% if is_spice %} · ไม่ใช้ใน SPICE (CE Reference เท่านั้น){% endif %}</label>
           <div class="control">
-            <select name="mode" id="mode" onchange="this.form.submit()">
+            <select name="mode" id="mode" {% if is_spice %}disabled aria-disabled="true"{% else %}onchange="this.form.submit()"{% endif %}>
               {% for key, label in mode_labels.items() %}
                 <option value="{{ key }}" {% if mode == key %}selected{% endif %}>{{ label }}</option>
               {% endfor %}
@@ -188,20 +189,20 @@
         {% endif %}
 
         <div class="field">
-          <label for="beta">β (Current Gain)</label>
+          <label for="beta">β (Current Gain){% if is_spice %} · ไม่ใช้ใน SPICE (BF=100 จาก .model){% endif %}</label>
           <div class="control">
             <input id="beta" name="beta" type="text" inputmode="decimal" placeholder="100"
-                   value="{{ values.get('beta', '100') }}" required>
+                   value="{{ values.get('beta', '100') }}" {% if is_spice %}disabled{% else %}required{% endif %}>
             <span class="unit-note">–</span>
           </div>
           {% if errors and errors.beta %}<p class="field-error">{{ errors.beta }}</p>{% endif %}
         </div>
 
         <div class="field">
-          <label for="vbe">V<sub>BE</sub> (Base–Emitter Voltage)</label>
+          <label for="vbe">V<sub>BE</sub> (Base–Emitter Voltage){% if is_spice %} · ไม่ใช้ใน SPICE (V<sub>BE</sub> มาจาก .model){% endif %}</label>
           <div class="control">
             <input id="vbe" name="vbe" type="text" inputmode="decimal"
-                   value="{{ values.get('vbe', '0.7') }}" required>
+                   value="{{ values.get('vbe', '0.7') }}" {% if is_spice %}disabled{% else %}required{% endif %}>
             <select disabled aria-hidden="true"><option>V</option></select>
           </div>
           {% if errors and errors.vbe %}<p class="field-error">{{ errors.vbe }}</p>{% endif %}
@@ -279,13 +280,13 @@
     <!-- Circuit diagram -->
     <section class="panel panel-circuit">
       <h2><span class="icon icon-accent">🔗</span> Circuit: Common-Emitter Amplifier
-        <span class="unit-note" style="float:right">[{{ mode_labels[mode] }}]</span>
+        <span class="unit-note panel-heading-note">[{{ 'CE Reference' if is_spice else mode_labels[mode] }}]</span>
       </h2>
-      <svg class="schematic" viewBox="0 0 340 330" role="img" aria-label="Common-emitter bias circuit">
+      <svg class="schematic" viewBox="0 0 340 330" role="img" aria-label="{{ 'Common-emitter amplifier reference circuit' if is_spice else 'Common-emitter bias circuit' }}">
         <text x="250" y="18" text-anchor="middle" class="t-dim">V<tspan baseline-shift="sub" font-size="10">CC</tspan> = {{ diagram.vcc }}</text>
         <line x1="85" y1="45" x2="250" y2="45" class="wire"/>
 
-        {% if mode == "voltage_divider" %}
+        {% if is_spice or mode == "voltage_divider" %}
         <!-- R1 from VCC to Base -->
         <line x1="85" y1="45" x2="85" y2="66" class="wire"/>
         <rect x="72" y="66" width="26" height="56" rx="3" class="comp"/>
@@ -336,7 +337,7 @@
         <line x1="200" y1="210" x2="250" y2="210" class="wire"/>
         <circle cx="250" cy="210" r="4" class="node"/>
 
-        {% if mode in ("voltage_divider", "emitter") %}
+        {% if is_spice or mode in ("voltage_divider", "emitter") %}
         <!-- RE from Emitter to ground -->
         <rect x="237" y="210" width="26" height="56" rx="3" class="comp"/>
         <text x="268" y="233" class="t-name">R<tspan baseline-shift="sub" font-size="10">E</tspan></text>
@@ -351,14 +352,17 @@
         <line x1="240" y1="297" x2="260" y2="297" class="wire"/>
         <line x1="245" y1="302" x2="255" y2="302" class="wire"/>
         <text x="180" y="237" text-anchor="middle" class="t-name">Q<tspan baseline-shift="sub" font-size="10">1</tspan></text>
-        <text x="180" y="255" text-anchor="middle" class="t-value">NPN (β = {{ diagram.beta }})</text>
+        <text x="180" y="255" text-anchor="middle" class="t-value">{% if is_spice %}NPN (β = 100 จาก .model){% else %}NPN (β = {{ diagram.beta }}){% endif %}</text>
       </svg>
+      {% if is_spice %}
+      <p class="unit-note">SPICE ใช้วงจรอ้างอิง CE (ไม่มี emitter bypass); β = 100 มาจาก .model ไม่ใช่ช่อง β (Lab 03) · CIN {{ diagram.cin }} · COUT {{ diagram.cout }} · RL {{ diagram.rl }}</p>
+      {% endif %}
     </section>
 
     <!-- Results -->
     <section class="panel panel-results">
       <h2><span class="icon icon-accent">📊</span> Results
-        <span class="unit-note" style="float:right">[{{ result.mode if result else mode_labels[mode] }}]</span>
+        <span class="unit-note panel-heading-note">[{{ result.mode if result else mode_labels[mode] }}]</span>
       </h2>
       <div class="provenance-note">
         <strong>Engine status</strong> — Analytical (Lab 03) มาจากสมการใน <code>dc_bias.py</code>;
@@ -429,7 +433,7 @@
     {% if spice_result %}
     <section class="panel panel-spice">
       <h2><span class="icon icon-accent">⚡</span> SPICE simulation
-        <span class="unit-note" style="float:right">{{ analysis_labels[analysis] }}</span>
+        <span class="unit-note panel-heading-note">{{ analysis_labels[analysis] }}</span>
       </h2>
       <p class="engine-status">
         <span class="engine-badge">Engine: {{ spice_result.engine }}</span>
@@ -454,7 +458,7 @@
       {% endif %}
       {% if spice_result.svg %}
       <div class="chart">{{ spice_result.svg | safe }}</div>
-      <p class="chart-caption">ค่าจาก log ของ ngspice เท่านั้น — แกนความถี่เป็นสเกลลอการิทึม (Bode) และแกนเวลาเป็น ms (Transient)</p>
+      <p class="chart-caption">{% if spice_result.analysis == "ac" %}ค่าจาก log ของ ngspice เท่านั้น — แกนความถี่เป็นสเกลลอการิทึม (Bode){% else %}ค่าจาก log ของ ngspice เท่านั้น — แกนเวลาเป็น ms (Transient){% endif %}</p>
       {% endif %}
       {% endif %}
       {% if spice_result.log_excerpt %}

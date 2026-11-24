@@ -81,6 +81,7 @@ body {
   border-radius: 14px;
   padding: 1.1rem 1.1rem;
   box-shadow: 0 6px 20px rgba(16, 32, 46, 0.06);
+  min-width: 0; /* ให้กราฟกว้างกว่าจอเลื่อนใน .chart ไม่ดันทั้งหน้า */
 }
 .panel h2 {
   margin: 0 0 0.9rem;
@@ -133,6 +134,7 @@ body {
   font-weight: 600;
   align-self: center;
 }
+.panel-heading-note { float: right; }
 sub { font-size: 0.75em; }
 .field-error { color: var(--danger); font-size: 0.8rem; margin: 0.25rem 0 0; }
 
@@ -298,6 +300,7 @@ sub { font-size: 0.75em; }
   border: 1px solid var(--border);
   border-radius: 10px;
   background: #fff;
+  max-width: 100%;
   overflow-x: auto;
 }
 .chart svg { display: block; width: 100%; height: auto; min-width: 320px; }
@@ -314,11 +317,11 @@ sub { font-size: 0.75em; }
 
 /* ---- Responsive ---- */
 @media (max-width: 1023px) {
-  .layout { grid-template-columns: 320px 1fr; }
+  .layout { grid-template-columns: 320px minmax(0, 1fr); }
   .panel-results, .panel-spice { grid-column: 1 / -1; }
 }
 @media (max-width: 880px) {
-  .layout { grid-template-columns: 1fr; padding: 0.9rem; }
+  .layout { grid-template-columns: minmax(0, 1fr); padding: 0.9rem; }
   .topbar { flex-direction: column; align-items: flex-start; padding: 0.8rem 1rem; }
   .brand { gap: 0.6rem; }
   .chip { width: 40px; height: 40px; }
@@ -326,5 +329,5 @@ sub { font-size: 0.75em; }
   .badge-text { text-align: left; }
   .goal-strip { margin-left: 0.9rem; margin-right: 0.9rem; align-items: flex-start; }
   .analysis-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .chart svg { min-width: 0; }
+  .chart svg { min-width: 760px; } /* เลื่อนใน .chart ได้ ไม่บีบข้อความในกราฟ */
 }
