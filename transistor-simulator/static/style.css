@@ -33,7 +33,7 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  padding: 0.85rem 1.6rem;
+  padding: 0.85rem max(1.6rem, calc((100% - 1500px) / 2 + 1.6rem));
   background: #fff;
   border-bottom: 1px solid var(--border);
 }
@@ -68,7 +68,7 @@ body {
 /* ---- Layout: 3 columns, collapses inwards ---- */
 .layout {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr) 330px;
+  grid-template-columns: minmax(340px, 380px) minmax(0, 1fr) minmax(320px, 360px);
   gap: 1rem;
   padding: 1.1rem 1.6rem 1rem;
   max-width: 1500px;
@@ -79,7 +79,7 @@ body {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 1.1rem 1.1rem;
+  padding: 1.15rem 1.2rem;
   box-shadow: 0 6px 20px rgba(16, 32, 46, 0.06);
   min-width: 0; /* ให้กราฟกว้างกว่าจอเลื่อนใน .chart ไม่ดันทั้งหน้า */
 }
@@ -155,7 +155,7 @@ sub { font-size: 0.75em; }
 .primary:hover { background: var(--accent-dark); }
 
 /* ---- Schematic ---- */
-.schematic { width: 100%; height: auto; display: block; }
+.schematic { width: 100%; max-width: 520px; height: auto; display: block; margin: 0 auto; }
 .wire { stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; }
 .bar { stroke: var(--ink); stroke-width: 3.6; }
 .comp { fill: #fff; stroke: var(--ink); stroke-width: 2.2; }
@@ -216,7 +216,9 @@ sub { font-size: 0.75em; }
 /* ---- Week 2 goal strip ---- */
 .goal-strip {
   display: flex; gap: 0.8rem; align-items: center;
-  margin: 0 1.6rem 1.4rem;
+  width: calc(100% - 3.2rem);
+  max-width: 1500px;
+  margin: 0 auto 1.4rem;
   padding: 0.6rem 1.6rem;
   background: var(--goal-bg);
   border: 1px solid var(--goal-border);
@@ -317,7 +319,7 @@ sub { font-size: 0.75em; }
 
 /* ---- Responsive ---- */
 @media (max-width: 1023px) {
-  .layout { grid-template-columns: 320px minmax(0, 1fr); }
+  .layout { grid-template-columns: minmax(320px, 360px) minmax(0, 1fr); }
   .panel-results, .panel-spice { grid-column: 1 / -1; }
 }
 @media (max-width: 880px) {
@@ -327,7 +329,7 @@ sub { font-size: 0.75em; }
   .chip { width: 40px; height: 40px; }
   .topbar h1 { font-size: 1.15rem; }
   .badge-text { text-align: left; }
-  .goal-strip { margin-left: 0.9rem; margin-right: 0.9rem; align-items: flex-start; }
+  .goal-strip { width: calc(100% - 1.8rem); margin: 0 auto 1.2rem; align-items: flex-start; }
   .analysis-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .chart svg { min-width: 760px; } /* เลื่อนใน .chart ได้ ไม่บีบข้อความในกราฟ */
 }
