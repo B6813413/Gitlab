@@ -46,11 +46,23 @@
           </div>
           {% if errors and errors.mode %}<p class="field-error">{{ errors.mode }}</p>{% endif %}
         </div>
-        <p class="unit-note" style="text-align:left">เปลี่ยนโหมดแล้วฟอร์มจะโหลดใหม่ แสดงเฉพาะช่องที่ใช้กับโหมดนั้น (ผลรอบก่อนจะถูกล้าง)</p>
+        <div class="field">
+          <label for="analysis">การวิเคราะห์ (Analysis)</label>
+          <div class="control">
+            <select name="analysis" id="analysis" onchange="this.form.submit()">
+              {% for key, label in analysis_labels.items() %}
+                <option value="{{ key }}" {% if analysis == key %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% if errors and errors.analysis %}<p class="field-error">{{ errors.analysis }}</p>{% endif %}
+        </div>
+        <p class="unit-note" style="text-align:left">เปลี่ยนโหมดหรือ analysis แล้วฟอร์มจะโหลดใหม่ แสดงเฉพาะช่องที่ใช้กับโหมดนั้น (ผลรอบก่อนจะถูกล้าง)</p>
       </form>
 
       <form method="post" novalidate>
         <input type="hidden" name="mode" value="{{ mode }}">
+        <input type="hidden" name="analysis" value="{{ analysis }}">
         <div class="field">
           <label for="vcc">V<sub>CC</sub> (Supply Voltage)</label>
           <div class="control">
@@ -187,7 +199,71 @@
           {% if errors and errors.vbe %}<p class="field-error">{{ errors.vbe }}</p>{% endif %}
         </div>
 
-        <button class="primary" type="submit">🧮 Calculate DC Bias</button>
+        {% if analysis != "bias" %}
+        <div class="spice-fields">
+          <h3>CE Amplifier · ค่าสำหรับ netlist</h3>
+          <div class="field">
+            <label for="rl">R<sub>L</sub> (Load Resistor)</label>
+            <div class="control">
+              <input id="rl" name="rl" type="text" inputmode="decimal" placeholder="10"
+                     value="{{ values.get('rl', '10') }}" required>
+              <select name="rl_unit" aria-label="RL unit">
+                <option value="kohm" {% if values.get('rl_unit', 'kohm') == 'kohm' %}selected{% endif %}>kΩ</option>
+                <option value="ohm" {% if values.get('rl_unit', 'kohm') == 'ohm' %}selected{% endif %}>Ω</option>
+              </select>
+            </div>
+            {% if errors and errors.rl %}<p class="field-error">{{ errors.rl }}</p>{% endif %}
+          </div>
+          <div class="field">
+            <label for="cin">C<sub>IN</sub> (Input Coupling)</label>
+            <div class="control">
+              <input id="cin" name="cin" type="text" inputmode="decimal" placeholder="10"
+                     value="{{ values.get('cin', '10') }}" required>
+              <span class="unit-note">µF</span>
+            </div>
+            {% if errors and errors.cin %}<p class="field-error">{{ errors.cin }}</p>{% endif %}
+          </div>
+          <div class="field">
+            <label for="cout">C<sub>OUT</sub> (Output Coupling)</label>
+            <div class="control">
+              <input id="cout" name="cout" type="text" inputmode="decimal" placeholder="10"
+                     value="{{ values.get('cout', '10') }}" required>
+              <span class="unit-note">µF</span>
+            </div>
+            {% if errors and errors.cout %}<p class="field-error">{{ errors.cout }}</p>{% endif %}
+          </div>
+          <div class="field">
+            <label for="amp">V<sub>in</sub> amplitude (peak)</label>
+            <div class="control">
+              <input id="amp" name="amp" type="text" inputmode="decimal" placeholder="0.01"
+                     value="{{ values.get('amp', '0.01') }}" required>
+              <span class="unit-note">V</span>
+            </div>
+            {% if errors and errors.amp %}<p class="field-error">{{ errors.amp }}</p>{% endif %}
+          </div>
+          <div class="field">
+            <label for="freq">Signal frequency</label>
+            <div class="control">
+              <input id="freq" name="freq" type="text" inputmode="decimal" placeholder="1k"
+                     value="{{ values.get('freq', '1k') }}" required>
+              <span class="unit-note">Hz (เติม k ได้)</span>
+            </div>
+            {% if errors and errors.freq %}<p class="field-error">{{ errors.freq }}</p>{% endif %}
+          </div>
+          <div class="field">
+            <label for="bjt_model">BJT model name</label>
+            <div class="control">
+              <input id="bjt_model" name="bjt_model" type="text" placeholder="QNPN"
+                     value="{{ values.get('bjt_model', 'QNPN') }}" required>
+            </div>
+            {% if errors and errors.bjt_model %}<p class="field-error">{{ errors.bjt_model }}</p>{% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        <button class="primary" type="submit">
+          {% if analysis == "bias" %}🧮 Calculate DC Bias{% else %}⚡ Run SPICE {{ analysis_labels[analysis] }}{% endif %}
+        </button>
         {% if errors and errors.form %}<p class="field-error">{{ errors.form }}</p>{% endif %}
       </form>
     </section>
@@ -330,6 +406,36 @@
       <p class="intermediate">โหมดที่คำนวณ: <strong>{{ result.mode }}</strong></p>
       {% endif %}
     </section>
+
+    {% if spice_result %}
+    <section class="panel panel-spice">
+      <h2><span class="icon icon-accent">⚡</span> SPICE simulation
+        <span class="unit-note" style="float:right">{{ analysis_labels[analysis] }}</span>
+      </h2>
+      <p class="engine-status">Engine: {{ spice_result.engine }} · Status: {{ spice_result.status }} · Model: {{ spice_result.model }}</p>
+      {% if spice_result.status == "error" %}
+      <p class="field-error">{{ spice_result.error }}</p>
+      {% else %}
+      <h3>SPICE (.op) operating point</h3>
+      <table class="results-table">
+        <tbody>
+          {% for label, formatted in spice_result.rows %}
+          <tr><th>{{ label }}</th><td>{{ formatted }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if spice_result.chart %}
+      <h3>{{ spice_result.chart }} plot</h3>
+      {% endif %}
+      {% if spice_result.svg %}
+      <div class="chart">{{ spice_result.svg | safe }}</div>
+      {% endif %}
+      {% endif %}
+      {% if spice_result.log_excerpt %}
+      <details class="log-details"><summary>Log excerpt (ngspice)</summary><pre>{{ spice_result.log_excerpt }}</pre></details>
+      {% endif %}
+    </section>
+    {% endif %}
   </main>
 
   <footer class="goal-strip">

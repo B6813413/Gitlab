@@ -13,9 +13,23 @@ from __future__ import annotations
 
 from flask import Flask, render_template, request
 
+from charts import render_bode_svg, render_transient_svg
 from dc_bias import compute_bias, parse_resistance, validate_inputs
+from spice_engine import SPICE_DEFAULTS, run_analysis, validate_spice_inputs
 
 app = Flask(__name__)
+
+ANALYSIS_LABELS = {
+    "bias": "Analytical DC Bias (Lab 03)",
+    "spice_dc": "SPICE DC (.op)",
+    "spice_ac": "SPICE AC (Bode)",
+    "spice_tran": "SPICE Transient",
+}
+SPICE_ANALYSIS = {
+    "spice_dc": "dc",
+    "spice_ac": "ac",
+    "spice_tran": "tran",
+}
 
 DEFAULT_VALUES = {
     "vcc": "12", "r1": "100", "r2": "22", "rc": "2.2", "re": "1",
@@ -23,6 +37,8 @@ DEFAULT_VALUES = {
     "r1_unit": "kohm", "r2_unit": "kohm", "rc_unit": "kohm",
     "re_unit": "kohm", "rb_unit": "kohm",
     "mode": "voltage_divider",
+    "rl": "10", "cin": "10", "cout": "10",
+    "amp": "0.01", "freq": "1k", "bjt_model": "QNPN",
 }
 
 MODE_LABELS = {
@@ -99,23 +115,107 @@ def build_diagram(values: dict, mode: str) -> dict:
     }
 
 
+def _render(values, errors, result, diagram, mode, *, analysis="bias",
+            spice_result=None, status=200):
+    """Render the one page with a stable context on every branch."""
+    return render_template(
+        "index.html", values=values, errors=errors, result=result,
+        diagram=diagram, mode=mode, mode_labels=MODE_LABELS,
+        analysis=analysis, analysis_labels=ANALYSIS_LABELS,
+        spice_result=spice_result,
+    ), status
+
+
+def _spice_params(form):
+    """Merge SPICE defaults with submitted fields before validation.
+
+    A partial POST (e.g. only ``amp``/``freq`` changed) is still a complete,
+    valid netlist; missing values come from the Lab 04 reference circuit.
+    """
+    params = dict(SPICE_DEFAULTS)
+    for key, value in form.items():
+        if value in (None, "") or not (key in SPICE_DEFAULTS or key.endswith("_unit")):
+            continue
+        params[key] = value
+    return params
+
+
+def _spice_view(raw):
+    """Display-ready copy of an engine result (formatter-reused, no fabrication)."""
+    view = dict(raw or {})
+    values = view.get("values") or {}
+    view["rows"] = (
+        [
+            ("VB", format_voltage(values.get("vb"))),
+            ("VE", format_voltage(values.get("ve"))),
+            ("VC", format_voltage(values.get("vc"))),
+            ("VCE", format_voltage(values.get("vce"))),
+            ("IC", format_ic_ma(values.get("ic"))),
+        ] if values else []
+    )
+    chart = ""
+    svg = ""
+    if view.get("status") == "success":
+        if view.get("analysis") == "ac":
+            chart, svg = "Bode", render_bode_svg(view.get("series"))
+        elif view.get("analysis") == "tran":
+            chart, svg = "Transient", render_transient_svg(view.get("series"))
+    view["chart"] = chart
+    view["svg"] = svg
+    return view
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     submitted_mode = (request.form.get("mode") or request.args.get("mode")
                       or DEFAULT_VALUES["mode"])
     mode = submitted_mode if submitted_mode in MODE_LABELS else DEFAULT_VALUES["mode"]
+    submitted_analysis = (request.form.get("analysis")
+                          or request.args.get("analysis") or "bias")
+    analysis = submitted_analysis if submitted_analysis in ANALYSIS_LABELS else "bias"
 
     errors = None
     result = None
+    spice_result = None
     values = dict(DEFAULT_VALUES)
     values["mode"] = mode
 
     # โหมดที่ไม่รู้จักต้องแจ้งข้อผิดพลาด (ไม่เดาว่าเป็น Voltage Divider)
     if submitted_mode not in MODE_LABELS:
         errors = {"mode": f"โหมดวงจร '{submitted_mode}' ไม่รู้จัก กรุณาเลือกโหมดที่ถูกต้อง"}
+    if submitted_analysis not in ANALYSIS_LABELS:
+        errors = dict(errors or {})
+        errors["analysis"] = (
+            f"ไม่รู้จักการวิเคราะห์ '{submitted_analysis}' กรุณาเลือก analysis ที่ถูกต้อง"
+        )
+        if request.method == "POST":
+            return _render(
+                values, errors, None, build_diagram(values, mode), mode,
+                analysis=analysis, status=400,
+            )
 
     if request.method == "POST":
         form = request.form.to_dict()
+
+        # SPICE dispatch: ใช้ engine จริง แต่ไม่แตะเส้นทาง dc_bias เดิม
+        if analysis != "bias":
+            params = _spice_params(form)
+            spice_errors = validate_spice_inputs(params)
+            if spice_errors:
+                errors = dict(errors or {})
+                errors.update(spice_errors)
+                return _render(
+                    values, errors, None, build_diagram(values, mode), mode,
+                    analysis=analysis, status=400,
+                )
+            raw = run_analysis(params, SPICE_ANALYSIS[analysis])
+            spice_result = _spice_view(raw)
+            status = 200 if raw.get("status") == "success" else 502
+            return _render(
+                values, errors, None, build_diagram(values, mode), mode,
+                analysis=analysis, spice_result=spice_result, status=status,
+            )
+
         values = {k: form.get(k, DEFAULT_VALUES.get(k, "")) for k in FORM_FIELDS}
         values["mode"] = mode
         values.update({f"{f}_unit": form.get(f"{f}_unit", DEFAULT_VALUES.get(f"{f}_unit", "kohm"))
@@ -128,11 +228,10 @@ def index():
             else:
                 errors = form_errors
         if errors:
-            return render_template(
-                "index.html", values=values, errors=errors, result=None,
-                diagram=build_diagram(values, mode), mode=mode,
-                mode_labels=MODE_LABELS,
-            ), 400
+            return _render(
+                values, errors, None, build_diagram(values, mode), mode,
+                analysis=analysis, status=400,
+            )
 
         # แปลงหน่วยจากฟอร์ม (kΩ -> Ω ฯลฯ) ที่จุดรับค่าเดียวก่อนส่งให้ dc_bias.py
         try:
@@ -156,20 +255,18 @@ def index():
                 inputs["re"] = parse_resistance(form["re"], form.get("re_unit", "ohm"))
         except (KeyError, ValueError) as exc:
             errors = {"form": f"ต้องเป็นตัวเลขที่จำกัด ({exc})"}
-            return render_template(
-                "index.html", values=values, errors=errors, result=None,
-                diagram=build_diagram(values, mode), mode=mode,
-                mode_labels=MODE_LABELS,
-            ), 400
+            return _render(
+                values, errors, None, build_diagram(values, mode), mode,
+                analysis=analysis, status=400,
+            )
 
         op = compute_bias(submitted_mode, inputs)
         if op.get("error"):
             errors = {"form": op["error"]}
-            return render_template(
-                "index.html", values=values, errors=errors, result=None,
-                diagram=build_diagram(values, mode), mode=mode,
-                mode_labels=MODE_LABELS,
-            ), 400
+            return _render(
+                values, errors, None, build_diagram(values, mode), mode,
+                analysis=analysis, status=400,
+            )
 
         result = {
             "mode": op.get("mode", mode),
@@ -200,10 +297,9 @@ def index():
             ],
         }
 
-    return render_template(
-        "index.html", values=values, errors=errors, result=result,
-        diagram=build_diagram(values, mode), mode=mode,
-        mode_labels=MODE_LABELS,
+    return _render(
+        values, errors, result, build_diagram(values, mode), mode,
+        analysis=analysis,
     )
 
 
