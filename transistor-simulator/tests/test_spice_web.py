@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app import app
+from spice_engine import SPICE_DEFAULTS
 
 
 SPICE_ANALYSES = ("spice_dc", "spice_ac", "spice_tran")
@@ -97,6 +98,26 @@ class TestSpiceDispatch(unittest.TestCase):
         resp = self.client.post("/", data=dict(BASE_FIELDS, re="abc"))
         self.assertEqual(resp.status_code, 400)
         mock_run.assert_not_called()
+
+    @patch("app.run_analysis")
+    def test_cleared_required_spice_field_is_rejected(self, mock_run):
+        # novalidate sends "" for a cleared field; it must not fall back to
+        # the silent default and claim a successful simulation.
+        resp = self.client.post("/", data=dict(BASE_FIELDS, re=""))
+        html = resp.get_data(as_text=True)
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("กรุณากรอกค่านี้", html)
+        self.assertRegex(html, r'<input id="re"[^>]*value=""')
+        mock_run.assert_not_called()
+
+    @patch("app.run_analysis")
+    def test_omitted_spice_field_still_uses_reference_default(self, mock_run):
+        mock_run.side_effect = lambda params, analysis, **kw: result(
+            status="error", analysis=analysis, error="stop", values=None)
+        self.client.post("/", data={"analysis": "spice_dc", "re": "2"})
+        params = mock_run.call_args.args[0]
+        self.assertEqual(params["re"], "2")
+        self.assertEqual(params["cin"], SPICE_DEFAULTS["cin"])
 
     def test_spice_model_is_a_fixed_select_not_free_text(self):
         # The reference netlist defines exactly one model; a free-text field

@@ -140,8 +140,12 @@ def validate_spice_inputs(values: dict) -> dict[str, str]:
     # Capacitances are plain microfarad numbers; they must not inherit the
     # resistance grammar's "k" suffix (10k uF would silently be 10000 uF).
     for field in _CAP_FIELDS:
+        text = _raw(values, field)
+        if not text:
+            errors[field] = "กรุณากรอกค่านี้"
+            continue
         try:
-            microfarads = _finite_number(_raw(values, field))
+            microfarads = _finite_number(text)
         except ValueError as exc:
             errors[field] = str(exc)
             continue

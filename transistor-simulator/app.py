@@ -146,7 +146,9 @@ def _spice_params(form):
     params = dict(SPICE_DEFAULTS)
     for key in SPICE_FORM_FIELDS:
         value = form.get(key)
-        if value not in (None, ""):
+        # An omitted field keeps the reference default; a submitted empty
+        # field is a validation error and must reach validate_spice_inputs().
+        if value is not None:
             params[key] = value
     return params
 
@@ -161,7 +163,9 @@ def _spice_values(form, mode):
     values = dict(DEFAULT_VALUES)
     for key in SPICE_ECHO_FIELDS:
         value = form.get(key)
-        if value not in (None, ""):
+        # Echo exactly what was submitted, including a cleared field, so the
+        # error message points at the user's empty input rather than a default.
+        if value is not None:
             values[key] = value
     values["mode"] = mode
     return values

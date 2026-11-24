@@ -7,6 +7,7 @@ from unittest.mock import patch
 from spice_engine import (
     SPICE_DEFAULTS,
     build_netlist,
+    parse_ac_log,
     parse_op_log,
     parse_print_table,
     run_analysis,
@@ -86,6 +87,11 @@ class TestSpiceValidationGuards(unittest.TestCase):
         # Caps are microfarads only; "10k" must not silently become 10000 uF.
         errs = validate_spice_inputs(dict(SPICE_DEFAULTS, cin="10k"))
         self.assertEqual(errs.get("cin"), "ต้องเป็นตัวเลขที่จำกัด")
+
+    def test_empty_capacitance_uses_required_message(self):
+        # A cleared required field must get the same message as Lab 03.
+        errs = validate_spice_inputs(dict(SPICE_DEFAULTS, cin=""))
+        self.assertEqual(errs.get("cin"), "กรุณากรอกค่านี้")
 
     def test_netlist_builder_refuses_invalid_params(self):
         with self.assertRaises(ValueError):
@@ -183,6 +189,11 @@ class TestParsers(unittest.TestCase):
     def test_parse_print_table_returns_empty_list_without_data(self):
         self.assertEqual(parse_print_table("no table here\n", ["freq"]), [])
         self.assertEqual(parse_print_table("", ["freq"]), [])
+
+    def test_parse_ac_log_skips_frequencies_without_vin_reference(self):
+        # A Vout-only table cannot produce Vin-referenced gain; never invent it.
+        vout_only = "\n".join(AC_LOG.splitlines()[:4]) + "\n"
+        self.assertEqual(parse_ac_log(vout_only), [])
 
 
 class TestRunnerErrors(unittest.TestCase):
