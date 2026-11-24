@@ -109,3 +109,40 @@ class TestSpiceDispatch(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn(b"Transient", resp.data)
         self.assertIn(b"Time (ms)", resp.data)
+
+    @patch("app.run_analysis")
+    def test_spice_post_echoes_submitted_values_and_units(self, mock_run):
+        data = dict(BASE_FIELDS, analysis="spice_tran", amp="0.02",
+                    freq="2k", rl="20", rl_unit="ohm")
+        for status in ("success", "error"):
+            mock_run.return_value = result(
+                status=status, analysis="tran",
+                series=([{"time": 0, "vin": 0.02, "vout": -0.2},
+                         {"time": 0.001, "vin": 0.02, "vout": -0.2}]
+                        if status == "success" else None),
+                error=None if status == "success" else "stop")
+            with self.subTest(status=status):
+                html = self.client.post("/", data=data).get_data(as_text=True)
+                self.assertIn('value="0.02"', html)
+                self.assertIn('value="2k"', html)
+                self.assertIn('value="20"', html)
+                self.assertIn('<option value="ohm" selected>Ω</option>', html)
+
+    @patch("app.run_analysis")
+    def test_ac_success_hides_operating_point_table(self, mock_run):
+        mock_run.return_value = result(
+            analysis="ac",
+            series=[{"freq": 100, "gain_db": -3, "phase_deg": -170},
+                    {"freq": 1000, "gain_db": -5, "phase_deg": -180}])
+        resp = self.client.post("/", data=dict(BASE_FIELDS, analysis="spice_ac"))
+        html = resp.get_data(as_text=True)
+        self.assertNotIn("SPICE (.op) operating point", html)
+        self.assertIn("Bode plot", html)
+
+    @patch("app.run_analysis")
+    def test_spice_post_empty_state_is_analysis_aware(self, mock_run):
+        mock_run.return_value = result(status="error", analysis="dc",
+                                       error="stop")
+        html = self.client.post("/", data=BASE_FIELDS).get_data(as_text=True)
+        self.assertNotIn("Calculate DC Bias", html)
+        self.assertIn("การวิเคราะห์นี้ใช้ ngspice", html)

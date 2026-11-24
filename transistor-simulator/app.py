@@ -57,6 +57,13 @@ MODE_EXTRA_FIELDS = {
 # ฟิลด์ร่วมทั้งหมดที่ฟอร์มอาจแสดง
 FORM_FIELDS = ["vcc", "r1", "r2", "rc", "re", "rb", "beta", "vbe"]
 
+# ฟิลด์ netlist ของ SPICE และ unit select ที่ฟอร์ม CE แสดงจริง
+# (rb_unit ไม่ถูกใช้ใน netlist จึงไม่ส่งต่อให้ engine)
+SPICE_UNIT_FIELDS = ("r1_unit", "r2_unit", "rc_unit", "re_unit", "rl_unit")
+SPICE_FORM_FIELDS = tuple(SPICE_DEFAULTS) + SPICE_UNIT_FIELDS
+# ฟิลด์ที่ฟอร์มต้องแสดงค่าที่ผู้ใช้ส่งกลับมาหลัง POST SPICE
+SPICE_ECHO_FIELDS = SPICE_FORM_FIELDS + ("rb", "beta", "vbe")
+
 
 def format_current(amps) -> str:
     """Format current in engineering notation (µA / mA)."""
@@ -131,13 +138,30 @@ def _spice_params(form):
 
     A partial POST (e.g. only ``amp``/``freq`` changed) is still a complete,
     valid netlist; missing values come from the Lab 04 reference circuit.
+    Only SPICE circuit fields and the CE unit selects are forwarded.
     """
     params = dict(SPICE_DEFAULTS)
-    for key, value in form.items():
-        if value in (None, "") or not (key in SPICE_DEFAULTS or key.endswith("_unit")):
-            continue
-        params[key] = value
+    for key in SPICE_FORM_FIELDS:
+        value = form.get(key)
+        if value not in (None, ""):
+            params[key] = value
     return params
+
+
+def _spice_values(form, mode):
+    """Echo submitted form values on every SPICE render branch.
+
+    Starts from the shared defaults so a partial POST still shows a complete
+    form, then overlays whatever the user actually submitted (including unit
+    selects such as ``rl_unit``).
+    """
+    values = dict(DEFAULT_VALUES)
+    for key in SPICE_ECHO_FIELDS:
+        value = form.get(key)
+        if value not in (None, ""):
+            values[key] = value
+    values["mode"] = mode
+    return values
 
 
 def _spice_view(raw):
@@ -200,6 +224,7 @@ def index():
         # SPICE dispatch: ใช้ engine จริง แต่ไม่แตะเส้นทาง dc_bias เดิม
         if analysis != "bias":
             params = _spice_params(form)
+            values = _spice_values(form, mode)
             spice_errors = validate_spice_inputs(params)
             if spice_errors:
                 errors = dict(errors or {})

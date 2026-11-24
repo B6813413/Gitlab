@@ -368,8 +368,13 @@
       <h3 class="results-heading">Analytical (Lab 03)</h3>
       {% if not result %}
       <div class="empty-state">
+        {% if analysis == "bias" %}
         <p>Fill in the component values, then press <strong>Calculate DC Bias</strong>.</p>
         <p class="muted">VB, VE, VC, VCE, IB, IC and IE will appear here.</p>
+        {% else %}
+        <p>การวิเคราะห์นี้ใช้ ngspice — กรอกค่าแล้วกด <strong>Run SPICE {{ analysis_labels[analysis] }}</strong>.</p>
+        <p class="muted">ผลจาก ngspice จะแสดงในแผง SPICE simulation ด้านล่าง พร้อม log จริง</p>
+        {% endif %}
       </div>
       {% else %}
       <table class="results-table">
@@ -434,6 +439,7 @@
       {% if spice_result.status == "error" %}
       <p class="field-error">{{ spice_result.error }}</p>
       {% else %}
+      {% if spice_result.rows %}
       <h3>SPICE (.op) operating point</h3>
       <table class="results-table">
         <tbody>
@@ -442,6 +448,7 @@
           {% endfor %}
         </tbody>
       </table>
+      {% endif %}
       {% if spice_result.chart %}
       <h3 class="results-heading">{{ spice_result.chart }} plot</h3>
       {% endif %}
