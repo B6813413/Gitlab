@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lab 03: BJT DC Bias Web App — ENG29 2121</title>
+  <title>Lab 04: BJT Amplifier Simulator — ENG29 2121</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -20,8 +20,8 @@
         <rect x="19" y="19" width="10" height="10" fill="#0f6b78"/>
       </svg>
       <div>
-        <h1>Lab 03: BJT DC Bias Web App</h1>
-        <p>ENG29 2121 – Common Emitter · เลือกวงจรไบอัสได้สามแบบ</p>
+        <h1>Lab 04: BJT Amplifier Simulator</h1>
+        <p>ENG29 2121 – Common Emitter · วิเคราะห์ DC แบบสมการ และจำลองด้วย ngspice</p>
       </div>
     </div>
     <div class="course-badge">
@@ -34,7 +34,8 @@
     <!-- Input Parameters -->
     <section class="panel panel-input">
       <h2><span class="icon icon-accent">⚙️</span> Input Parameters</h2>
-      <form method="get" action="/" class="mode-form" style="margin:0 0 1rem 0;border:none;background:none;padding:0;box-shadow:none;">
+      <form method="get" action="/" class="mode-form analysis-form">
+        <div class="analysis-picker">
         <div class="field">
           <label for="mode">เลือกวงจรไบอัส (Bias mode)</label>
           <div class="control">
@@ -57,7 +58,14 @@
           </div>
           {% if errors and errors.analysis %}<p class="field-error">{{ errors.analysis }}</p>{% endif %}
         </div>
-        <p class="unit-note" style="text-align:left">เปลี่ยนโหมดหรือ analysis แล้วฟอร์มจะโหลดใหม่ แสดงเฉพาะช่องที่ใช้กับโหมดนั้น (ผลรอบก่อนจะถูกล้าง)</p>
+        </div>
+        <div class="analysis-tabs" aria-hidden="true">
+          <span class="analysis-tab {% if analysis == 'bias' %}is-active{% endif %}">Analytical</span>
+          <span class="analysis-tab {% if analysis == 'spice_dc' %}is-active{% endif %}">SPICE (.op)</span>
+          <span class="analysis-tab {% if analysis == 'spice_ac' %}is-active{% endif %}">Bode</span>
+          <span class="analysis-tab {% if analysis == 'spice_tran' %}is-active{% endif %}">Transient</span>
+        </div>
+        <p class="unit-note">เลือก analysis แล้วฟอร์มจะโหลดใหม่ แสดงเฉพาะช่องที่ใช้ (ผลรอบก่อนจะถูกล้าง)</p>
       </form>
 
       <form method="post" novalidate>
@@ -349,9 +357,15 @@
 
     <!-- Results -->
     <section class="panel panel-results">
-      <h2><span class="icon icon-accent">📊</span> DC Bias Results
+      <h2><span class="icon icon-accent">📊</span> Results
         <span class="unit-note" style="float:right">[{{ result.mode if result else mode_labels[mode] }}]</span>
       </h2>
+      <div class="provenance-note">
+        <strong>Engine status</strong> — Analytical (Lab 03) มาจากสมการใน <code>dc_bias.py</code>;
+        SPICE (.op), Bode และ Transient มาจาก <code>ngspice</code> พร้อมชื่อโมเดลและ log จริง
+        (ไม่มีข้อมูลจำลองที่แต่งขึ้น)
+      </div>
+      <h3 class="results-heading">Analytical (Lab 03)</h3>
       {% if not result %}
       <div class="empty-state">
         <p>Fill in the component values, then press <strong>Calculate DC Bias</strong>.</p>
@@ -412,7 +426,11 @@
       <h2><span class="icon icon-accent">⚡</span> SPICE simulation
         <span class="unit-note" style="float:right">{{ analysis_labels[analysis] }}</span>
       </h2>
-      <p class="engine-status">Engine: {{ spice_result.engine }} · Status: {{ spice_result.status }} · Model: {{ spice_result.model }}</p>
+      <p class="engine-status">
+        <span class="engine-badge">Engine: {{ spice_result.engine }}</span>
+        <span class="engine-badge status-{{ spice_result.status }}">Status: {{ spice_result.status }}</span>
+        <span class="engine-badge">Model: {{ spice_result.model }}</span>
+      </p>
       {% if spice_result.status == "error" %}
       <p class="field-error">{{ spice_result.error }}</p>
       {% else %}
@@ -425,10 +443,11 @@
         </tbody>
       </table>
       {% if spice_result.chart %}
-      <h3>{{ spice_result.chart }} plot</h3>
+      <h3 class="results-heading">{{ spice_result.chart }} plot</h3>
       {% endif %}
       {% if spice_result.svg %}
       <div class="chart">{{ spice_result.svg | safe }}</div>
+      <p class="chart-caption">ค่าจาก log ของ ngspice เท่านั้น — แกนความถี่เป็นสเกลลอการิทึม (Bode) และแกนเวลาเป็น ms (Transient)</p>
       {% endif %}
       {% endif %}
       {% if spice_result.log_excerpt %}
@@ -445,10 +464,10 @@
       <circle cx="12" cy="12" r="2.4" fill="#1f5f9e"/>
     </svg></span>
     <div>
-      <span class="goal-label">Week 3 Goal (Lab 03)</span>
-      <span class="goal-text">เว็บแอป Flask หน้าเดียว เลือกวงจรไบอัส BJT Common Emitter ได้สามแบบ
-        (Voltage Divider / Fixed / Emitter แหล่งจ่ายเดียว) คำนวณจุดทำงาน DC ด้วย Python
-        แยกฟังก์ชันใน dc_bias.py แสดงผลพร้อมหน่วย และตรวจอินพุตต่อโหมด</span>
+      <span class="goal-label">Week 4 Goal (Lab 04)</span>
+      <span class="goal-text">เว็บแอป Flask หน้าเดียว เปรียบเทียบผลคำนวณ DC จาก dc_bias.py กับการจำลอง
+        ngspice จริง (DC operating point, Bode, Transient) แสดงแหล่งที่มาของข้อมูลและ log
+        โดยไม่เพิ่ม dependency ฝั่งหน้าเว็บ</span>
     </div>
   </footer>
 </body>

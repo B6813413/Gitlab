@@ -37,6 +37,12 @@ class TestSpiceDispatch(unittest.TestCase):
         self.assertIn('name="analysis"', html)
         self.assertIn("SPICE DC (.op)", html)
 
+    def test_spice_result_block_has_provenance_and_units(self):
+        html = self.client.get("/").get_data(as_text=True)
+        for marker in ("analysis", "Engine status", "SPICE (.op)",
+                       "Bode", "Transient"):
+            self.assertIn(marker, html)
+
     @patch("app.run_analysis")
     def test_post_spice_dc_shows_engine_status(self, mock_run):
         mock_run.return_value = result(
