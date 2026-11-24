@@ -30,7 +30,7 @@ branch: `lab04/spice-simulator` | Python 3.12, Flask 3.1, Windows 11
 | **B5 · Transient** | Run `.tran` ที่ **10 mV peak, 1 kHz**; เห็น Vin/Vout ตามเวลา มีป้ายเวลา/แรงดัน และสัญญาณกลับเฟส | `Status: success`, **508 จุดข้อมูล**; axis `Time (ms)` / `Voltage (V)`; legend `Vin (V)`, `Vout (V)`; correlation ของ y-coordinate Vincent/Vout = **−0.999997** → กลับเฟสตามข้อสมมติ CE | V, ms | OpenCode Browser Tool + SVG points + log + screenshot | **PASS** | log ท้าย: `507  5.000000e-03  -1.22465e-17  -2.42388e-05`; captures/`b5-transient-10mV-1kHz.png` |
 | **B6 · Change Source** | เปลี่ยน amplitude 0.01 → 0.02 V แล้ว run ซ้ำ; waveform ต้องเปลี่ยนไม่ใช่กราฟ hard-code | peak |Vin| **0.00999845 → 0.0199969 V**, peak |Vout| **0.0175098 → 0.03503924 V** (เพิ่ม ~2× ตาม amplitude ใหม่) | V | OpenCode Browser Tool + parse log table ก่อน/หลัง + screenshot | **PASS** | captures/`b6-transient-20mV-1kHz.png`; หลัง POST ฟอร์มโชว์ `amp = 0.02` (sticky) และ log รอบหลังยืนยันว่า ngspice ได้ 20 mV |
 | **B7 · Invalid / Fail** | ใส่ RE = 0 แล้ว run | แจ้ง **`ต้องมากกว่า 0`** ใต้ช่อง RE; ไม่มี `.panel-spice`, ไม่มี chart, ไม่มี badge `Status: success` | — | OpenCode Browser Tool + `field-error` DOM | **PASS** | error เกิดจาก `validate_spice_inputs()` ฝั่ง Flask (HTTP 400) ก่อนเรียก ngspice; ไม่โชว์ผลสำเร็จปลอม |
-| **B8 · UI** | เปิด desktop/phone viewport แล้วเปลี่ยนโหมด; กราฟ/หน่วย/ปุ่มอ่านง่าย ไม่มีเนื้อหาถูกตัด | Desktop (800px DOM): layout `756.219px`, chart **717px**, overflow **0** · Phone (iframe 390px): layout `346.219px` (single column), chart viewport **307px**, SVG **760px** (เลื่อนใน `.chart`), page overflow **0**, ปุ่มกว้าง 309px; axis/legend ครบทั้งสองขนาด | px | OpenCode Browser Tool DOM + Chrome headless screenshots | **PASS** | captures/`b8-desktop-bode-result.png` (1280×900), `b8-mobile-bode-result.png` (390×1200); ตรวจ computed style ใน iframe 390px ด้วย browser tool |
+| **B8 · UI** | เปิด desktop/phone viewport แล้วเปลี่ยนโหมด; กราฟ/หน่วย/ปุ่มอ่านง่าย ไม่มีเนื้อหาถูกตัด | Desktop (800px DOM): layout `756.219px`, chart viewport **714px**, overflow **0** · Phone (iframe 390px): layout `346.219px` (single column), chart viewport **304px**, SVG **760px** (เลื่อนใน `.chart`), page overflow **0**, ปุ่มกว้าง ~306px; axis/legend ครบทั้งสองขนาด | px | OpenCode Browser Tool DOM + Chrome headless screenshots | **PASS** | captures/`b8-desktop-bode-result.png` (1280×900), `b8-mobile-bode-result.png` (390×1200); ตรวจ computed style ใน iframe 800/390px ด้วย browser tool หลัง CSS polish |
 
 ผู้ควบคุม SDD รัน B1–B8 ซ้ำด้วย OpenCode Browser Tool บน server ตัวเดียวกันหลัง commit `e903378`
 แล้วได้ผลตรงตารางทั้ง 8 กรณี (รวม A1–A3 ใน B1, log `.print` จริงใน B2–B6, error 400 ใน B7,
@@ -39,11 +39,13 @@ branch: `lab04/spice-simulator` | Python 3.12, Flask 3.1, Windows 11
 
 ### UI provenance ที่ตรวจเพิ่มหลัง code review
 
-สำหรับ `analysis != "bias"` ตรวจจากหน้าเว็บจริงแล้ว: `select[name=mode]`, `#beta`, `#vbe`
-มี `disabled` และมีข้อความ “ไม่ใช้ใน SPICE”; หัวข้อวงจรเป็น `[CE Reference]` พร้อม
+สำหรับ `analysis != "bias"` ตรวจจากหน้าเว็บจริงแล้ว: `select[name=mode]`, `#beta`, `#vbe`, `#rb`
+มี `disabled` และมีข้อความ “ไม่ใช้ใน SPICE”; `#r1/#r2/#re` เปิดใช้งาน + `required` ในทุกโหมด
+เพราะ netlist ใช้ CE Reference เสมอ; หัวข้อวงจรเป็น `[CE Reference]` พร้อม
 `aria-label="Common-emitter amplifier reference circuit"`; ภาพแสดง R1/R2/RE (ไม่ใช่ RB/GND)
 และมีหมายเหตุ “β = 100 จาก .model · CIN 10 µF · COUT 10 µF · RL 10 kΩ”
-(ค่าที่กรอกจะแสดงกลับหลัง POST) — ป้องกันความสับสนว่าช่อง β หรือโหมด Lab 03 มีผลต่อ ngspice
+(ค่าที่กรอกจะแสดงกลับหลัง POST) — ป้องกันความสับสนว่าช่อง β หรือโหมด Lab 03 มีผลต่อ ngspice;
+ตรวจทั้ง 3 analysis × 3 mode ด้วย DOM จริงและหน้า `mode=fixed&analysis=spice_dc` ใน browser
 
 ## รายละเอียดหลักฐานที่สำคัญ
 
@@ -98,7 +100,7 @@ python -m unittest discover -s tests -v
 ```
 
 ```text
-Ran 123 tests in 0.071s
+Ran 126 tests in 0.075s
 OK
 ```
 
@@ -106,7 +108,8 @@ OK
 parser สำหรับ DC/AC/transient, runner (mock, มี regression ที่กัน `-r run.raw`
 เพราะ ngspice 47 ข้าม `.print`), Flask dispatch, accessibility/units ของ SVG,
 โครงสร้าง UI 2 forms + analysis selector, sticky SPICE POST, SPICE UI provenance
-(ช่อง Lab 03 ถูกปิด / ภาพ CE Reference) และ mobile chart/caption tests
+(ช่อง Lab 03 ถูกปิด / ภาพ CE Reference / R1-R2-RE เปิดและ RB ปิดในทุกโหมด),
+mobile chart/caption tests และ `<html lang="th">`
 
 ## Lab 03 A1–A5 (historical — ยังผ่านอยู่ใน B1)
 
@@ -130,10 +133,13 @@ parser สำหรับ DC/AC/transient, runner (mock, มี regression ท�
   → ลบ flag นั้นออก (มี regression test รองรับ) ทำให้ DC/AC/transient อ่านค่าได้จริง
 - **hardening เพิ่มระหว่างตรวจ:** ตะแกร่งความถี่ของ Bode ถูกปรับให้ตรงสเกลลอการิทึม
   (commit `7570de8`), SPICE POST ส่งค่ากรอกกลับมาทุก branch (commit `b0fb534`)
-  และ code review รอบสุดท้ายเพิ่ม test สำหรับ SPICE UI/mobile chart/caption → รวม 123 tests
+  และ code review รอบสุดท้ายเพิ่ม test สำหรับ SPICE UI/mobile chart/caption/CE fields/`lang`
+  → รวม 126 tests
 - **บั๊ก UI ที่ review พบแล้วแก้:** ตอนใช้ SPICE หน้าเว็บยังโชว์ช่อง `mode/β/VBE` แบบ
   Required และภาพวงจรตามโหมด Lab 03 ทั้งที่ engine ไม่รับค่าเหล่านั้น → ปิดช่อง,
-  ตรึงภาพเป็น CE Reference และระบุว่า β=100 มาจาก `.model` (ตรวจใน browser แล้ว)
+  ตรึงภาพเป็น CE Reference และระบุว่า β=100 มาจาก `.model`; อีกกรณีคือโหมด Fixed/Emitter
+  ทำให้ R1/R2/RE ถูกปิดและ RB ถูกบังคับทั้งที่ netlist ไม่ใช้ RB → เปิด R1/R2/RE และปิด RB
+  สำหรับทุก analysis แบบ SPICE (ตรวจใน browser แล้ว)
 
 ## ข้อจำกัด
 

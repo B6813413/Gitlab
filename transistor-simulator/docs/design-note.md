@@ -128,7 +128,8 @@ transistor-simulator/
 
 ## 10. Test strategy + ค่าอ้างอิง
 
-62 tests: math (3 โหมดเทียบ hand calc, saturation/cutoff/β=1), parsing, validation
+62 tests ในรอบ Lab 03 (historic; ปัจจุบันรวม Lab 04 คือ 126 tests): math
+(3 โหมดเทียบ hand calc, saturation/cutoff/β=1), parsing, validation
 per-mode, dispatch, formatter, HTTP 200/400, form structure, browser regression cases
 
 | กรณี | IC อ้างอิง | VCE อ้างอิง |
@@ -149,7 +150,7 @@ per-mode, dispatch, formatter, HTTP 200/400, form structure, browser regression 
 | หน่วย IB/IE | engineering notation (µA ถ้าต่ำกว่า 1 mA) |
 | เปลี่ยนโหมดแล้วผลเก่า | ล้างทิ้ง (GET ใหม่) กันอ่านผลผิดโหมด |
 | วิธีตรวจ browser | OpenCode Browser Tool แทน Playwright MCP ที่ยังไม่พร้อม; เก็บ config ไว้ใน repo |
-| หลักฐาน | accessibility snapshot จากหน้าเว็บจริง (screenshot ใช้ไม่ได้เพราะหน้าต่างไม่ visible) |
+| หลักฐาน | DOM/snapshot จากหน้าเว็บจริง + screenshot ใน `docs/captures/` (Chrome headless) |
 
 ---
 

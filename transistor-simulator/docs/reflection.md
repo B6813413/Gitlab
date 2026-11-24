@@ -56,7 +56,8 @@
 ตรวจ 3 ชั้น:
 1. **คำนวณมืออิสระ** ก่อนรัน — A2: IB=11.3/1M=11.30 µA → IC=1.130 mA;
    A3: 11.3/(1M+101×1k)=10.263 µA → IC=1.026 mA; A4 เปลี่ยน RE=2k → IC=0.940 mA
-2. **unit tests** 62 tests รันผ่าน (`python -m unittest discover -s tests -v`)
+2. **unit tests** 62 tests ในรอบ Lab 03 รันผ่าน (ตัวเลข historic; ปัจจุบันรวม Lab 04 คือ 126 tests)
+   (`python -m unittest discover -s tests -v`)
 3. **browser จริง** A1–A5 ผ่าน OpenCode Browser Tool อ่าน snapshot หลังส่งฟอร์ม
 
 **ค่าที่ตรวจซ้ำเป็นพิเศษ:** A4 เพราะเป็นกรณี “เปลี่ยน RE แล้ว IC ต้องลดลง”
@@ -78,8 +79,9 @@
   และลองเปลี่ยน β แล้วดูว่าจุดทำงานขยับอย่างไร
 - ถ้าจะทำ Week 4 จะเริ่มที่ `dc_bias.py` ก่อน เพราะเป็นแหล่งความจริงของสมการ
   แล้วค่อยเพิ่ม route/UI ที่ `app.py` และ `templates/index.html` ตามลำดับ
-- ข้อจำกัดที่ยังติดอยู่: รันบน Flask debug server เฉพาะเครื่อง, ยังไม่มี persistent
-  config, และหลักฐาน screenshot เก็บไม่ได้ในรอบนี้จึงใช้ accessibility snapshot แทน
+- ข้อจำกัดที่ยังติดอยู่: รันบน Flask debug server เฉพาะเครื่องและยังไม่มี persistent
+  config; หลักฐาน screenshot เก็บได้ภายหลังด้วย Chrome headless ดู `docs/captures/`
+  ส่วนค่าตัวเลขยังยืนยันจาก DOM/ngspice log ใน OpenCode Browser Tool
 
 ## 7. Lab 04 — สิ่งที่ AI ทำ / สิ่งที่ตรวจเอง (เพิ่มจาก Lab 03)
 
