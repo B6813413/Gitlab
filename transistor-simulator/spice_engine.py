@@ -225,7 +225,9 @@ def build_netlist(params: dict, analysis: str) -> str:
     elif name == "ac":
         lines += [
             ".ac dec 20 10 1meg",
-            ".print ac vdb(vout) vp(vout)",
+            # Gain is Vout/Vin, so ngspice must print the input reference too.
+            # Phase is likewise relative: vp(vout) - vp(vin).
+            ".print ac vdb(vout) vp(vout) vdb(vin) vp(vin)",
         ]
     else:
         lines += [
@@ -251,10 +253,20 @@ _OP_CURRENT_COLUMNS = {"ic": "ic", "@q1[ic]": "ic", "i(q1)": "ic"}
 _OP_COLUMNS = {**_OP_VOLTAGE_COLUMNS, **_OP_CURRENT_COLUMNS}
 _OP_REQUIRED = ("vb", "ve", "vc", "ic")
 
-#: Column names handed to :func:`parse_print_table` for each sweep analysis.
-_SERIES_COLUMNS = {
-    "ac": ["freq", "gain_db", "phase_deg"],
-    "tran": ["time", "vin", "vout"],
+#: Column names handed to :func:`parse_print_table` for transient sweeps.
+#: AC uses :func:`parse_ac_log` because gain needs both Vout and Vin tables.
+_SERIES_COLUMNS = {"tran": ["time", "vin", "vout"]}
+
+#: AC table headers emitted by ngspice for ``.print ac ...``.  Each function
+#: family is printed as its own table, so rows are merged by frequency before
+#: the gain and phase are derived.
+_AC_COLUMNS = {
+    "frequency": "freq",
+    "freq": "freq",
+    "vdb(vout)": "vdb_vout",
+    "vp(vout)": "vp_vout",
+    "vdb(vin)": "vdb_vin",
+    "vp(vin)": "vp_vin",
 }
 
 _LOG_EXCERPT_LIMIT = 2000
@@ -349,6 +361,59 @@ def parse_print_table(log: str, columns: list[str]) -> list[dict[str, float]]:
         rows.append(
             {name: float(token) for name, token in zip(names, tokens)}
         )
+    return rows
+
+
+def parse_ac_log(log: str) -> list[dict[str, float]]:
+    """Derive Vin-referenced gain (dB) and phase (degrees) from an AC log.
+
+    ngspice prints each ``.print ac`` function family as its own table (for
+    example ``vdb(vout)/vp(vout)`` then ``vdb(vin)/vp(vin)``).  Rows are merged
+    by frequency; a frequency without all four columns is skipped rather than
+    producing a fabricated gain.  Phase is unwrapped only into (-180, 180]
+    degrees so a CE inversion renders as about -180 degrees, not -3.14.
+    """
+    merged: dict[str, dict[str, float]] = {}
+    header: list[str | None] | None = None
+
+    for line in str(log or "").splitlines():
+        tokens = line.split()
+        if not tokens:
+            continue
+        lowered = [token.lower() for token in tokens]
+        if "index" in lowered and any(token in _AC_COLUMNS for token in lowered):
+            header = [_AC_COLUMNS.get(token) for token in lowered]
+            continue
+        if header is None or len(tokens) != len(header):
+            continue
+        if not all(_is_number(token) for token in tokens):
+            continue
+
+        row: dict[str, float] = {}
+        for name, token in zip(header, tokens):
+            if name is not None:
+                row[name] = float(token)
+        freq = row.get("freq")
+        if freq is None:
+            continue
+        merged.setdefault(f"{freq:.12g}", {}).update(row)
+
+    rows: list[dict[str, float]] = []
+    required = ("vdb_vout", "vdb_vin", "vp_vout", "vp_vin")
+    for key in sorted(merged, key=float):
+        record = merged[key]
+        if any(name not in record for name in required):
+            continue
+        phase_deg = math.degrees(record["vp_vout"] - record["vp_vin"])
+        if phase_deg > 180.0:
+            phase_deg -= 360.0
+        elif phase_deg < -180.0:
+            phase_deg += 360.0
+        rows.append({
+            "freq": record["freq"],
+            "gain_db": record["vdb_vout"] - record["vdb_vin"],
+            "phase_deg": phase_deg,
+        })
     return rows
 
 
@@ -476,7 +541,10 @@ def run_analysis(
         result["values"] = values
         return result
 
-    series = parse_print_table(log_text, _SERIES_COLUMNS[name])
+    if name == "ac":
+        series = parse_ac_log(log_text)
+    else:
+        series = parse_print_table(log_text, _SERIES_COLUMNS[name])
     if not series:
         result["error"] = (
             f"ไม่พบข้อมูลผลลัพธ์ {name.upper()} ใน log ของ ngspice"

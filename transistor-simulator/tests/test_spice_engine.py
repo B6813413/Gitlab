@@ -34,6 +34,12 @@ class TestNetlist(unittest.TestCase):
         self.assertIn("v(vin)", tran)
         self.assertNotIn(".ac", tran)
 
+    def test_ac_netlist_prints_vin_reference_for_gain_and_phase(self):
+        # Gain must be Vout/Vin, not absolute Vout; phase must subtract Vin.
+        ac = build_netlist(SPICE_DEFAULTS, "ac")
+        for expression in ("vdb(vout)", "vdb(vin)", "vp(vout)", "vp(vin)"):
+            self.assertIn(expression, ac)
+
     def test_changed_params_change_netlist(self):
         base = build_netlist(SPICE_DEFAULTS, "tran")
         changed = build_netlist(dict(SPICE_DEFAULTS, re="2k", freq="2k"), "tran")
@@ -106,11 +112,40 @@ Index   v(b)         v(e)         v(c)         @q1[ic]
 0       1.942000e+00 1.242000e+00 9.294000e+00 1.230000e-03
 """
 
+#: Real ngspice 47 shape for ``.print ac vdb(vout) vp(vout) vdb(vin) vp(vin)``:
+#: one table per function family, keyed by Index/frequency.  At 1 kHz the
+#: output is -35.1402 dB absolute vs -40 dB input, i.e. +4.8598 dB gain, and
+#: -3.13926 rad output phase vs 0 rad input, i.e. about -179.86 degrees.
 AC_LOG = """\
-Index   freq         vdb(vout)    vp(vout)
-------  -----------  -----------  -----------
-0       1.000000e+03 -4.200000e+00 -1.750000e+02
-1       2.000000e+03 -4.500000e+00 -1.760000e+02
+Index   frequency       vdb(vout)       vp(vout)
+------  --------        -----------     --------
+40      1.000000e+03    -3.51402e+01    -3.13926e+00
+100     1.000000e+06    -3.51402e+01    -3.14159e+00
+
+Index   frequency       vdb(vin)        vp(vin)
+------  --------        -----------     --------
+40      1.000000e+03    -4.00000e+01    0.000000e+00
+100     1.000000e+06    -4.00000e+01    0.000000e+00
+"""
+
+#: Same circuit with a doubled source: both absolute dB values rise by
+#: 20*log10(2) = 6.0206 dB, so the derived gain must stay +4.8598 dB.
+AC_LOG_2X = """\
+Index   frequency       vdb(vout)       vp(vout)
+------  --------        -----------     --------
+40      1.000000e+03    -2.91196e+01    -3.13926e+00
+100     1.000000e+06    -2.91196e+01    -3.14159e+00
+
+Index   frequency       vdb(vin)        vp(vin)
+------  --------        -----------     --------
+40      1.000000e+03    -3.39794e+01    0.000000e+00
+100     1.000000e+06    -3.39794e+01    0.000000e+00
+"""
+
+TRAN_LOG = """\
+Index   time            vin             vout
+------  --------        -----------     -----------
+0       1.000000e-04    1.000000e-02    -1.750000e-02
 """
 
 
@@ -136,10 +171,9 @@ class TestParsers(unittest.TestCase):
             parse_op_log("ngspice: fatal error, no operating point\n")
 
     def test_parse_print_table_skips_header_and_maps_columns(self):
-        log = "Index freq vdb(vout) vp(vout)\n0 1.000000e+03 -4.200000e+00 -1.750000e+02\n1 2.000000e+03 -4.500000e+00 -1.760000e+02\n"
-        rows = parse_print_table(log, ["freq", "gain_db", "phase_deg"])
-        self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[0]["phase_deg"], -175.0)
+        rows = parse_print_table(TRAN_LOG, ["time", "vin", "vout"])
+        self.assertEqual(len(rows), 1)
+        self.assertAlmostEqual(rows[0]["vout"], -0.0175)
 
     def test_parse_print_table_returns_empty_list_without_data(self):
         self.assertEqual(parse_print_table("no table here\n", ["freq"]), [])
@@ -254,13 +288,38 @@ class TestRunnerSuccess(unittest.TestCase):
 
     @patch("spice_engine.shutil.which", return_value=r"C:\tools\ngspice.exe")
     @patch("spice_engine.subprocess.run")
-    def test_success_ac_returns_series_rows(self, mock_run, _):
+    def test_success_ac_derives_vin_referenced_gain_and_degree_phase(self, mock_run, _):
         mock_run.side_effect = self._fake_run(AC_LOG)
         r = run_analysis(SPICE_DEFAULTS, "ac")
         self.assertEqual(r["status"], "success")
         self.assertIsNone(r["values"])
         self.assertEqual(len(r["series"]), 2)
-        self.assertAlmostEqual(r["series"][0]["gain_db"], -4.2)
+        # -35.1402 dB Vout - (-40 dB Vin) = +4.8598 dB amplifier gain.
+        self.assertAlmostEqual(r["series"][0]["gain_db"], 4.8598, places=4)
+        # -3.14159 rad Vout - 0 rad Vin = -180 degrees, not -3.14 degrees.
+        self.assertAlmostEqual(r["series"][1]["phase_deg"], -180.0, places=1)
+
+    @patch("spice_engine.shutil.which", return_value=r"C:\tools\ngspice.exe")
+    @patch("spice_engine.subprocess.run")
+    def test_ac_gain_does_not_change_when_only_amplitude_changes(self, mock_run, _):
+        # Both logs come from the same amplifier; only the source amplitude
+        # doubled.  The derived gain must stay identical.
+        fake_runs = iter([
+            self._fake_run(AC_LOG),
+            self._fake_run(AC_LOG_2X),
+        ])
+
+        def next_run(cmd, **kwargs):
+            return next(fake_runs)(cmd, **kwargs)
+
+        mock_run.side_effect = next_run
+        first = run_analysis(SPICE_DEFAULTS, "ac")
+        second = run_analysis(dict(SPICE_DEFAULTS, amp="0.02"), "ac")
+        self.assertEqual(first["status"], "success")
+        self.assertEqual(second["status"], "success")
+        for a, b in zip(first["series"], second["series"]):
+            self.assertAlmostEqual(a["gain_db"], b["gain_db"], places=4)
+            self.assertAlmostEqual(a["phase_deg"], b["phase_deg"], places=1)
 
     @patch("spice_engine.shutil.which", return_value=r"C:\tools\ngspice.exe")
     @patch("spice_engine.subprocess.run")
