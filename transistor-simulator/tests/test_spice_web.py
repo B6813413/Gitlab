@@ -86,10 +86,25 @@ class TestSpiceDispatch(unittest.TestCase):
         mock_run.assert_not_called()
 
     @patch("app.run_analysis")
+    def test_unknown_analysis_on_get_returns_400_too(self, mock_run):
+        resp = self.client.get("/?analysis=bogus")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("ไม่รู้จักการวิเคราะห์", resp.get_data(as_text=True))
+        mock_run.assert_not_called()
+
+    @patch("app.run_analysis")
     def test_invalid_spice_input_never_reaches_engine(self, mock_run):
         resp = self.client.post("/", data=dict(BASE_FIELDS, re="abc"))
         self.assertEqual(resp.status_code, 400)
         mock_run.assert_not_called()
+
+    def test_spice_model_is_a_fixed_select_not_free_text(self):
+        # The reference netlist defines exactly one model; a free-text field
+        # invited misleading model-name validation errors.
+        html = self.client.get("/?analysis=spice_ac").get_data(as_text=True)
+        self.assertRegex(html, r'<select[^>]*name="bjt_model"')
+        self.assertIn('<option value="QNPN"', html)
+        self.assertNotRegex(html, r'<input[^>]*name="bjt_model"')
 
     @patch("app.run_analysis")
     def test_ac_success_renders_bode_svg(self, mock_run):
@@ -205,6 +220,8 @@ class TestMobileChartLegibility(unittest.TestCase):
         self.assertEqual(len(captions), 1)
         caption = captions[0]
         self.assertIn("ลอการิทึม", caption)
+        self.assertIn("10 Hz", caption)
+        self.assertIn("1 MHz", caption)
         self.assertNotIn("ms", caption)
         self.assertNotIn("แกนเวลา", caption)
 

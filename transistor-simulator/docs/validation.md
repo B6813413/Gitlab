@@ -26,7 +26,7 @@ branch: `lab04/spice-simulator` | Python 3.12, Flask 3.1, Windows 11
 | **B1 · Regression** | เปิด Divider / Fixed / Emitter แล้วกรอกชุดค่า Lab 03; ผลต้องตรงค่าอ้างอิงและสลับโหมดได้ | Divider: IC **1.230 mA**, VCE **8.052 V** (VB 1.942, VE 1.242, VC 9.294, VTH 2.164 V, RTH 18.033 kΩ, IB 12.299 µA) · Fixed: IC **1.130 mA**, VCE **9.514 V** (VB 0.700, VE 0.000, IB 11.300 µA) · Emitter: IC **1.026 mA**, VCE **8.705 V** (VB 1.737, VE 1.037, VC 9.742, IB 10.263 µA) | mA, V | OpenCode Browser Tool + `evaluate` fill + `requestSubmit()` + `wait('text')` + `evaluate` อ่าน `<table>` | **PASS** | h2 เปลี่ยนเป็น `[voltage_divider]`, `[fixed]`, `[emitter]`; ไม่มี `.field-error`; ตารางผลตรง A1/A2/A3 เดิมทุกตัว |
 | **B2 · DC SPICE** | เลือก CE Reference + Analysis `spice_dc` แล้ว run; ต้องเห็น VB/VE/VC/VCE/IC จาก ngspice + model/status | `Engine: ngspice · Status: success · Model: QNPN`; VB **1.949 V**, VE **1.289 V**, VC **9.189 V**, VCE **7.900 V**, IC **1.278 mA** | V, mA | OpenCode Browser Tool POST จริง + ngspice 47 | **PASS** | log: `0  1.949112e+00  1.289454e+00  9.189410e+00  1.278193e-03`; `<details>` แสดง log excerpt จริง |
 | **B3 · Change RE** | เปลี่ยน RE เพียงค่าเดียว (1 → 2 kΩ) แล้ว run DC ซ้ำ; OP ต้องเปลี่ยน ไม่ใช่ค่าค้าง | ก่อน: IC **1.278 mA**, VCE **7.900 V** → หลัง: IC **0.696 mA**, VCE **9.065 V** (VB 2.048 V, VE 1.405 V, VC 10.469 V) | mA, V, kΩ | OpenCode Browser Tool + `wait('textGone')` กันอ่านผลเก่า | **PASS** | log รอบหลัง: `0  2.048198e+00  1.404550e+00  1.046912e+01  6.958787e-04`; status ยัง `success` |
-| **B4 · AC** | Run AC แล้วดู Bode; frequency/gain/phase ต้องมีหน่วยและมาจาก run จริง | `Status: success`, **101 จุดข้อมูล**; label = `กราฟโบเดแสดงอัตราขยายและเฟสเทียบความถี่ จากผลจำลอง 101 จุดข้อมูล`; polyline 2 เส้น × 101 points; axis `Frequency (Hz)`, `Gain (dB)`, `Phase (°)` | Hz, dB, ° | OpenCode Browser Tool + อ่าน `aria-label`, `<text>`, `<polyline>` | **PASS** | log ท้าย: `100  1.000000e+06  -3.51402e+01  -3.14159e+00`; caption ระบุสเกลลอการิทึม |
+| **B4 · AC** | Run AC แล้วดู Bode; frequency/gain/phase ต้องมีหน่วย มาจาก run จริง และอ้าง Vin (ไม่ใช่ค่า absolute ของ Vout) | `Status: success`, **101 จุดข้อมูล**; label = `กราฟโบเดแสดงอัตราขยายและเฟสเทียบความถี่ จากผลจำลอง 101 จุดข้อมูล`; polyline 2 เส้น × 101 points; axis `Frequency (Hz)`, `Gain (dB)`, `Phase (°)` | Hz, dB, ° | OpenCode Browser Tool + อ่าน `aria-label`, `<text>`, `<polyline>`, `<details><pre>` | **PASS** | netlist พิมพ์ `vdb(vout) vp(vout) vdb(vin) vp(vin)` → log มี 2 ตาราง; gain = `vdb(vout)−vdb(vin)`, phase = `vp(vout)−vp(vin)` (ที่ 1 kHz ≈ **+4.86 dB**, ≈ **−179.9°**); ตาราง Vin ท้าย: `100 1.000000e+06 -4.00000e+01 0.000000e+00`; caption ระบุสเกลลอการิทึม; `browser.console` คืน `[]` |
 | **B5 · Transient** | Run `.tran` ที่ **10 mV peak, 1 kHz**; เห็น Vin/Vout ตามเวลา มีป้ายเวลา/แรงดัน และสัญญาณกลับเฟส | `Status: success`, **508 จุดข้อมูล**; axis `Time (ms)` / `Voltage (V)`; legend `Vin (V)`, `Vout (V)`; correlation ของ y-coordinate Vincent/Vout = **−0.999997** → กลับเฟสตามข้อสมมติ CE | V, ms | OpenCode Browser Tool + SVG points + log + screenshot | **PASS** | log ท้าย: `507  5.000000e-03  -1.22465e-17  -2.42388e-05`; captures/`b5-transient-10mV-1kHz.png` |
 | **B6 · Change Source** | เปลี่ยน amplitude 0.01 → 0.02 V แล้ว run ซ้ำ; waveform ต้องเปลี่ยนไม่ใช่กราฟ hard-code | peak |Vin| **0.00999845 → 0.0199969 V**, peak |Vout| **0.0175098 → 0.03503924 V** (เพิ่ม ~2× ตาม amplitude ใหม่) | V | OpenCode Browser Tool + parse log table ก่อน/หลัง + screenshot | **PASS** | captures/`b6-transient-20mV-1kHz.png`; หลัง POST ฟอร์มโชว์ `amp = 0.02` (sticky) และ log รอบหลังยืนยันว่า ngspice ได้ 20 mV |
 | **B7 · Invalid / Fail** | ใส่ RE = 0 แล้ว run | แจ้ง **`ต้องมากกว่า 0`** ใต้ช่อง RE; ไม่มี `.panel-spice`, ไม่มี chart, ไม่มี badge `Status: success` | — | OpenCode Browser Tool + `field-error` DOM | **PASS** | error เกิดจาก `validate_spice_inputs()` ฝั่ง Flask (HTTP 400) ก่อนเรียก ngspice; ไม่โชว์ผลสำเร็จปลอม |
@@ -65,8 +65,16 @@ Operating Point  Tue Nov 24 18:08:51  2026
 ### ngspice log — B4/B5/B6 (series จริง)
 
 ```text
-# AC ท้ายตาราง (101 rows)
+# AC — ngspice พิมพ์ 2 ตาราง (ต่อ frequency 101 rows)
+Index   frequency       vdb(vout)       vp(vout)
+40      1.000000e+03    -3.51402e+01    -3.13926e+00
 100     1.000000e+06    -3.51402e+01    -3.14159e+00
+
+Index   frequency       vdb(vin)        vp(vin)
+40      1.000000e+03    -4.00000e+01    0.000000e+00
+100     1.000000e+06    -4.00000e+01    0.000000e+00
+
+# gain_db = vdb(vout) - vdb(vin); phase_deg = vp(vout) - vp(vin) → (~4.86 dB, ~-179.9°) ที่ 1 kHz
 
 # Transient 10 mV/1 kHz — สองแถวต่อเนื่อง + แถวสุดท้าย (508 rows)
 503     4.962800e-03    -2.316120e-03    4.029522e-03
@@ -100,7 +108,7 @@ python -m unittest discover -s tests -v
 ```
 
 ```text
-Ran 126 tests in 0.075s
+Ran 131 tests in 0.081s
 OK
 ```
 
@@ -109,7 +117,9 @@ parser สำหรับ DC/AC/transient, runner (mock, มี regression ท�
 เพราะ ngspice 47 ข้าม `.print`), Flask dispatch, accessibility/units ของ SVG,
 โครงสร้าง UI 2 forms + analysis selector, sticky SPICE POST, SPICE UI provenance
 (ช่อง Lab 03 ถูกปิด / ภาพ CE Reference / R1-R2-RE เปิดและ RB ปิดในทุกโหมด),
-mobile chart/caption tests และ `<html lang="th">`
+mobile chart/caption tests, `<html lang="th">`, AC gain/phase ที่อ้าง Vin,
+การปฏิเสธหน่วย `k` ของ C (µF เท่านั้น), analysis ไม่รู้จักที่คืน 400 ทั้ง GET/POST,
+model ที่เป็น `<select>` คงที่ และ caption ระบุ sweep 10 Hz–1 MHz
 
 ## Lab 03 A1–A5 (historical — ยังผ่านอยู่ใน B1)
 
@@ -131,10 +141,18 @@ mobile chart/caption tests และ `<html lang="th">`
   ทิศทางของ OP/gain, อ่าน log ว่า series มาจาก `.print` จริง, และปรับคำใน reflection ให้เป็นภาษาตัวเอง
 - **บั๊กที่พบและแก้ระหว่างตรวจ:** ngspice 47 ข้าม `.print` ทันทีที่ runner ส่ง `-r run.raw`
   → ลบ flag นั้นออก (มี regression test รองรับ) ทำให้ DC/AC/transient อ่านค่าได้จริง
+- **บั๊ก AC ที่แก้เพิ่ม (commit `c6f580c`):** เดิมกราฟโบเดใช้ค่า `vdb(vout)`/`vp(vout)` แบบ absolute
+  เป็น gain/phase ทั้งที่ควรอ้าง Vin → เพิ่ม `vdb(vin)/vp(vin)` ใน netlist และ `parse_ac_log()`
+  รวมตารางตาม frequency แล้วลบ Vin ออกก่อน plot (มี test กับ log shape จริงของ ngspice 47 รองรับ)
+- **hardening อื่นที่ review เพิ่ม:** `validate_spice_inputs()` ใช้ `_finite_number()`
+  กับ `cin/cout` จึงปฏิเสธ `10k` (หน่วย k เป็นของ R ไม่ใช่ µF), `app.py` คืน HTTP 400
+  สำหรับ `?analysis=bogus` ทั้ง GET/POST แทน render หน้าเดิมด้วย 200, ช่อง model เปลี่ยน
+  จาก free-text เป็น `<select>` QNPN เดียวตาม netlist และ caption Bode ระบุ sweep 10 Hz–1 MHz
+  (มี test รองรับทุกกรณี)
 - **hardening เพิ่มระหว่างตรวจ:** ตะแกร่งความถี่ของ Bode ถูกปรับให้ตรงสเกลลอการิทึม
   (commit `7570de8`), SPICE POST ส่งค่ากรอกกลับมาทุก branch (commit `b0fb534`)
   และ code review รอบสุดท้ายเพิ่ม test สำหรับ SPICE UI/mobile chart/caption/CE fields/`lang`
-  → รวม 126 tests
+  → รวม 131 tests
 - **บั๊ก UI ที่ review พบแล้วแก้:** ตอนใช้ SPICE หน้าเว็บยังโชว์ช่อง `mode/β/VBE` แบบ
   Required และภาพวงจรตามโหมด Lab 03 ทั้งที่ engine ไม่รับค่าเหล่านั้น → ปิดช่อง,
   ตรึงภาพเป็น CE Reference และระบุว่า β=100 มาจาก `.model`; อีกกรณีคือโหมด Fixed/Emitter

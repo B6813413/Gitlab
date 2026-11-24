@@ -82,6 +82,11 @@ class TestSpiceValidationGuards(unittest.TestCase):
         errs = validate_spice_inputs(dict(SPICE_DEFAULTS, cin="0"))
         self.assertEqual(errs.get("cin"), "ต้องมากกว่า 0")
 
+    def test_capacitance_rejects_resistance_style_k_suffix(self):
+        # Caps are microfarads only; "10k" must not silently become 10000 uF.
+        errs = validate_spice_inputs(dict(SPICE_DEFAULTS, cin="10k"))
+        self.assertEqual(errs.get("cin"), "ต้องเป็นตัวเลขที่จำกัด")
+
     def test_netlist_builder_refuses_invalid_params(self):
         with self.assertRaises(ValueError):
             build_netlist(dict(SPICE_DEFAULTS, amp="0.01;rm -rf /"), "dc")

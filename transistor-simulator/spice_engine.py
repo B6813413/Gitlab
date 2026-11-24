@@ -137,10 +137,11 @@ def validate_spice_inputs(values: dict) -> dict[str, str]:
         if ohms <= 0:
             errors[field] = "ต้องมากกว่า 0"
 
-    # Capacitances are expressed in microfarads (written with a "u" suffix).
+    # Capacitances are plain microfarad numbers; they must not inherit the
+    # resistance grammar's "k" suffix (10k uF would silently be 10000 uF).
     for field in _CAP_FIELDS:
         try:
-            microfarads = parse_resistance(_raw(values, field))
+            microfarads = _finite_number(_raw(values, field))
         except ValueError as exc:
             errors[field] = str(exc)
             continue
@@ -175,7 +176,7 @@ def _si_values(params: dict) -> dict:
         unit = _raw(params, f"{field}_unit").lower() or "ohm"
         values[field] = parse_resistance(_raw(params, field), unit)
     for field in _CAP_FIELDS:
-        values[field] = parse_resistance(_raw(params, field))
+        values[field] = _finite_number(_raw(params, field))
     return values
 
 

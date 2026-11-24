@@ -5,7 +5,8 @@ Flask web app หน้าเดียวที่ต่อยอดจาก La
 
 - **Analytical DC Bias (Lab 03)** — Voltage Divider / Fixed / Emitter (สมการเดิมไม่เปลี่ยน)
 - **SPICE DC (.op)** — VB/VE/VC/VCE/IC จาก operating point ของ ngspice
-- **SPICE AC (Bode)** — gain (dB) และ phase (°) หลังคำนวณ small-signal
+- **SPICE AC (Bode)** — gain (dB) = `vdb(vout) − vdb(vin)` และ phase (°)
+  = `vp(vout) − vp(vin)` จาก small-signal (อ้างอิงที่ Vin ไม่ใช่ค่า absolute ของ Vout)
 - **SPICE Transient** — Vin/Vout ตามเวลา (ms) ที่ความถี่/แอมพลิจูดที่ผู้ใช้กรอก
 
 ทุกผลลัพธ์มีป้ายแหล่งที่มา (`engine`, `status`, `model`) และ log จริงจาก ngspice
@@ -93,7 +94,7 @@ python -m flask --app app run --debug
 python -m unittest discover -s tests -v
 ```
 
-ผลล่าสุด: **Ran 126 tests ... OK** (รันจากโฟลเดอร์ `transistor-simulator/`)
+ผลล่าสุด: **Ran 131 tests ... OK** (รันจากโฟลเดอร์ `transistor-simulator/`)
 
 ## โมเดลและหน่วยที่ใช้
 

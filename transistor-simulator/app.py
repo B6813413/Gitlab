@@ -215,11 +215,10 @@ def index():
         errors["analysis"] = (
             f"ไม่รู้จักการวิเคราะห์ '{submitted_analysis}' กรุณาเลือก analysis ที่ถูกต้อง"
         )
-        if request.method == "POST":
-            return _render(
-                values, errors, None, build_diagram(values, mode), mode,
-                analysis=analysis, status=400,
-            )
+        return _render(
+            values, errors, None, build_diagram(values, mode), mode,
+            analysis=analysis, status=400,
+        )
 
     if request.method == "POST":
         form = request.form.to_dict()

@@ -262,8 +262,9 @@
           <div class="field">
             <label for="bjt_model">BJT model name</label>
             <div class="control">
-              <input id="bjt_model" name="bjt_model" type="text" placeholder="QNPN"
-                     value="{{ values.get('bjt_model', 'QNPN') }}" required>
+              <select id="bjt_model" name="bjt_model" aria-label="BJT model">
+                <option value="QNPN" selected>QNPN</option>
+              </select>
             </div>
             {% if errors and errors.bjt_model %}<p class="field-error">{{ errors.bjt_model }}</p>{% endif %}
           </div>
@@ -458,7 +459,7 @@
       {% endif %}
       {% if spice_result.svg %}
       <div class="chart">{{ spice_result.svg | safe }}</div>
-      <p class="chart-caption">{% if spice_result.analysis == "ac" %}ค่าจาก log ของ ngspice เท่านั้น — แกนความถี่เป็นสเกลลอการิทึม (Bode){% else %}ค่าจาก log ของ ngspice เท่านั้น — แกนเวลาเป็น ms (Transient){% endif %}</p>
+      <p class="chart-caption">{% if spice_result.analysis == "ac" %}ค่าจาก log ของ ngspice เท่านั้น — sweep 10 Hz–1 MHz, แกนความถี่เป็นสเกลลอการิทึม (Bode){% else %}ค่าจาก log ของ ngspice เท่านั้น — แกนเวลาเป็น ms (Transient){% endif %}</p>
       {% endif %}
       {% endif %}
       {% if spice_result.log_excerpt %}
