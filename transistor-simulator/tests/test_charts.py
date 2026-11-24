@@ -27,6 +27,27 @@ def _text_labels(svg):
     return re.findall(r"<text[^>]*>([^<]+)</text>", svg)
 
 
+def _vertical_grid_x(svg):
+    """Return x positions of vertical grid lines (x1 == x2)."""
+    positions = []
+    for attrs in re.findall(r"<line\b([^>]*)/?>", svg):
+        x1 = re.search(r'\bx1="([^"]+)"', attrs)
+        x2 = re.search(r'\bx2="([^"]+)"', attrs)
+        if x1 and x2 and abs(float(x1.group(1)) - float(x2.group(1))) < 1e-9:
+            positions.append(float(x1.group(1)))
+    return positions
+
+
+def _label_x_positions(svg):
+    """Map rendered text content to its x coordinate."""
+    positions = {}
+    for attrs, content in re.findall(r"<text\b([^>]*)>([^<]+)</text>", svg):
+        x = re.search(r'\bx="([^"]+)"', attrs)
+        if x:
+            positions[content] = float(x.group(1))
+    return positions
+
+
 class TestCharts(unittest.TestCase):
     def test_bode_has_units_and_data_points(self):
         rows = [{"freq": 100, "gain_db": -3, "phase_deg": -170},
@@ -103,6 +124,22 @@ class TestBodeChart(unittest.TestCase):
         first_gap = gain_points[1][0] - gain_points[0][0]
         second_gap = gain_points[2][0] - gain_points[1][0]
         self.assertAlmostEqual(first_gap, second_gap, delta=0.5)
+
+    def test_log_grid_lines_align_with_tick_labels(self):
+        rows = [{"freq": freq, "gain_db": 0, "phase_deg": 0}
+                for freq in (10, 100, 1000)]
+        svg = render_bode_svg(rows)
+        grid_positions = _vertical_grid_x(svg)
+        label_positions = _label_x_positions(svg)
+        self.assertTrue(grid_positions)
+        for decade in ("10", "100", "1000"):
+            self.assertIn(decade, label_positions)
+            label_x = label_positions[decade]
+            self.assertTrue(
+                any(abs(label_x - grid_x) <= 0.1
+                    for grid_x in grid_positions),
+                f"{decade} Hz grid line is not aligned with its label",
+            )
 
 
 class TestTransientChart(unittest.TestCase):

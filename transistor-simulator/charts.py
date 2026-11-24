@@ -321,7 +321,8 @@ def render_bode_svg(series):
             (_PHASE_COLOR, "เฟส (Phase, °)"),
         ]),
         _grid(
-            [_map(tick, x_low, x_high, _PLOT_LEFT, _PLOT_RIGHT)
+            [_map(math.log10(tick) if use_log else tick,
+                  x_low, x_high, _PLOT_LEFT, _PLOT_RIGHT)
              for tick in freq_ticks],
             gain_y,
         ),
