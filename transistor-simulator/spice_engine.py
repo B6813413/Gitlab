@@ -415,13 +415,14 @@ def run_analysis(
             (Path(tmp) / "case.cir").write_text(netlist, encoding="utf-8")
             try:
                 proc = subprocess.run(
+                    # Do NOT pass -r: ngspice 47 then ignores .print lines and
+                    # the ASCII log has no table for our parsers.  The raw
+                    # binary is unused here; -o keeps the real log evidence.
                     [
                         executable,
                         "-b",
                         "-o",
                         "run.log",
-                        "-r",
-                        "run.raw",
                         "case.cir",
                     ],
                     cwd=tmp,

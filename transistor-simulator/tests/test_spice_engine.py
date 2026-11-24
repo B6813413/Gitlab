@@ -241,6 +241,19 @@ class TestRunnerSuccess(unittest.TestCase):
 
     @patch("spice_engine.shutil.which", return_value=r"C:\tools\ngspice.exe")
     @patch("spice_engine.subprocess.run")
+    def test_runner_does_not_request_raw_file_that_suppresses_print(self, mock_run, _):
+        # ngspice 47 ignores every .print line when -r writes a rawfile:
+        # the ASCII log then has no table for parse_op_log/parse_print_table.
+        mock_run.side_effect = self._fake_run(OP_LOG)
+        r = run_analysis(SPICE_DEFAULTS, "dc")
+        self.assertEqual(r["status"], "success")
+        cmd = mock_run.call_args.args[0]
+        self.assertIn("-o", cmd)
+        self.assertNotIn("-r", cmd)
+        self.assertNotIn("run.raw", cmd)
+
+    @patch("spice_engine.shutil.which", return_value=r"C:\tools\ngspice.exe")
+    @patch("spice_engine.subprocess.run")
     def test_success_ac_returns_series_rows(self, mock_run, _):
         mock_run.side_effect = self._fake_run(AC_LOG)
         r = run_analysis(SPICE_DEFAULTS, "ac")
