@@ -1,104 +1,140 @@
-# Validation — Lab 03 BJT DC Bias Web App (A1–A5)
+# Validation — Lab 04 BJT Amplifier Simulator (B1–B8) + Lab 03 regression
 
-วันที่ตรวจ: 2026-11-17 | รีโป: `transistor-simulator` | Remote: https://github.com/B6813413/Gitlab.git
-เครื่องมือ: Python 3.12, Flask 3.1, Windows 11, OpenCode Desktop Browser Tool
+วันที่ตรวจ: **2026-11-24** | repo: `transistor-simulator` | remote: https://github.com/B6813413/Gitlab.git
+branch: `lab04/spice-simulator` | Python 3.12, Flask 3.1, Windows 11
 
-ค่าร่วมทุกกรณี: **VCC = 12 V, RC = 2.2 kΩ, β = 100, VBE = 0.70 V**
-หน่วยบนฟอร์ม: VCC/VBE เป็น V; RC/RB/RE/R1/R2 เป็น kΩ
-เกณฑ์: |ผลต่าง| ≤ **0.01 mA (IC)** และ ≤ **0.02 V (VCE)** เทียบค่าอ้างอิงที่ยังไม่ปัดเศษ
+## สภาพแวดล้อมจริง
 
-## วิธีตรวจจริง
+| รายการ | ค่าที่ตรวจจริง |
+|---|---|
+| Browser | **OpenCode Browser Tool** (`tabs.open`, `navigate`, `evaluate`, `wait`, `snapshot`, `console`, `frames`) — Playwright MCP ไม่พร้อมใน harness นี้ จึงใช้ tool ที่ใบงานอนุญาตและระบุวิธีจริงในตาราง |
+| Viewport screenshot | Chrome headless (`--headless=new --window-size=... --screenshot=...`) สำหรับภาพทุกไฟล์ใน `docs/captures/` (โพสต์ฟอร์มจริงผ่าน iframe กว้าง 785/390px สำหรับ B5/B6/B8); ตรวจ computed layout เพิ่มด้วย iframe จริงใน OpenCode Browser Tool |
+| Server | `python -m flask --app app run --debug --port 5000` จาก `transistor-simulator/`; เปิด `http://127.0.0.1:5000/` สำเร็จ title = `Lab 04: BJT Amplifier Simulator — ENG29 2121` |
+| ngspice | **`ngspice-47`** — `** ngspice-47 : Circuit level simulation program`, `** Compiled with KLU Direct Linear Solver`, `** Copyright 2001-2026, The ngspice team.` |
+| วิธีได้ binary | `winget install --id ngspice` → `No package found matching input criteria.` จึงโหลด `ngspice-47_64.7z` จาก SourceForge แยกด้วย `tar -xf` และใช้ `ngspice_con.exe` เป็น `ngspice.exe` ใน `C:\Users\B6813413\AppData\Local\Temp\opencode\ngspice-bin` แล้วเติมลง `PATH` |
+| BJT model ใน netlist | **`.model QNPN NPN(IS=1e-14 BF=100 VAF=100)`** (ไม่มี emitter bypass capacitor) |
+| Console | ตรวจ `browser.console({level:'error'})` หลังโหลด/หลังรัน → `[]` ทั้งสองแท็บ (ไม่มี JS error) |
 
-ใช้ **OpenCode Browser Tool** (`browser.tabs.open` → `evaluate`/`fill` สำหรับกรอกค่า
-→ `click`/`press`/`requestSubmit` สำหรับส่งฟอร์ม → `snapshot` สำหรับอ่านผล)
-แทน **Playwright MCP** เพราะ MCP server ยังไม่พร้อมในสภาพแวดล้อมนี้
-(ไฟล์ `opencode.json` ใน repo กำหนด Playwright MCP ไว้แล้ว đểเปิดใช้ได้เมื่อพร้อม)
-ใบงาน Lab 03 §07 ระบุให้คะแนน Playwright MCP / OpenCode Browser / Manual เท่ากัน
-และให้ระบุวิธีจริง → records อยู่ในคอลัมน์ “วิธีตรวจ” ด้านล่าง
+เกณฑ์การอ่านผล: ค่าที่คัดมาเป็นข้อความ/DOM จากหน้าเว็บจริงหลังส่งฟอร์ม ไม่ใช่การอ่านโค้ดหรือ curl
+และกราฟต้องมี series มาจาก log ของ ngspice จริงเท่านั้น
 
-หลักฐานเป็น **accessibility snapshot จากหน้าเว็บจริงหลังส่งฟอร์ม** (ไม่ใช่การอ่านโค้ด
-หรือ curl) screenshot ไม่สามารถบันทึกได้เพราะหน้าต่าง desktop ไม่ได้อยู่ในโหมด.visible
-ระหว่างรอบตรวจ จึงใช้ snapshot เป็นหลักฐานแทนตามที่ใบงานอนุญาต (“ข้อความผลที่คัดมา”)
+## ตาราง B1–B8 (ผลที่เห็นจริงจาก browser)
 
-## ตาราง A1–A5 (ผลที่เห็นจริงจาก browser)
+| Case | Action ใน Browser / Expected | Observed จริง | หน่วย | วิธีตรวจ | Status | หลักฐาน |
+|---|---|---|---|---|---|---|
+| **B1 · Regression** | เปิด Divider / Fixed / Emitter แล้วกรอกชุดค่า Lab 03; ผลต้องตรงค่าอ้างอิงและสลับโหมดได้ | Divider: IC **1.230 mA**, VCE **8.052 V** (VB 1.942, VE 1.242, VC 9.294, VTH 2.164 V, RTH 18.033 kΩ, IB 12.299 µA) · Fixed: IC **1.130 mA**, VCE **9.514 V** (VB 0.700, VE 0.000, IB 11.300 µA) · Emitter: IC **1.026 mA**, VCE **8.705 V** (VB 1.737, VE 1.037, VC 9.742, IB 10.263 µA) | mA, V | OpenCode Browser Tool + `evaluate` fill + `requestSubmit()` + `wait('text')` + `evaluate` อ่าน `<table>` | **PASS** | h2 เปลี่ยนเป็น `[voltage_divider]`, `[fixed]`, `[emitter]`; ไม่มี `.field-error`; ตารางผลตรง A1/A2/A3 เดิมทุกตัว |
+| **B2 · DC SPICE** | เลือก CE Reference + Analysis `spice_dc` แล้ว run; ต้องเห็น VB/VE/VC/VCE/IC จาก ngspice + model/status | `Engine: ngspice · Status: success · Model: QNPN`; VB **1.949 V**, VE **1.289 V**, VC **9.189 V**, VCE **7.900 V**, IC **1.278 mA** | V, mA | OpenCode Browser Tool POST จริง + ngspice 47 | **PASS** | log: `0  1.949112e+00  1.289454e+00  9.189410e+00  1.278193e-03`; `<details>` แสดง log excerpt จริง |
+| **B3 · Change RE** | เปลี่ยน RE เพียงค่าเดียว (1 → 2 kΩ) แล้ว run DC ซ้ำ; OP ต้องเปลี่ยน ไม่ใช่ค่าค้าง | ก่อน: IC **1.278 mA**, VCE **7.900 V** → หลัง: IC **0.696 mA**, VCE **9.065 V** (VB 2.048 V, VE 1.405 V, VC 10.469 V) | mA, V, kΩ | OpenCode Browser Tool + `wait('textGone')` กันอ่านผลเก่า | **PASS** | log รอบหลัง: `0  2.048198e+00  1.404550e+00  1.046912e+01  6.958787e-04`; status ยัง `success` |
+| **B4 · AC** | Run AC แล้วดู Bode; frequency/gain/phase ต้องมีหน่วยและมาจาก run จริง | `Status: success`, **101 จุดข้อมูล**; label = `กราฟโบเดแสดงอัตราขยายและเฟสเทียบความถี่ จากผลจำลอง 101 จุดข้อมูล`; polyline 2 เส้น × 101 points; axis `Frequency (Hz)`, `Gain (dB)`, `Phase (°)` | Hz, dB, ° | OpenCode Browser Tool + อ่าน `aria-label`, `<text>`, `<polyline>` | **PASS** | log ท้าย: `100  1.000000e+06  -3.51402e+01  -3.14159e+00`; caption ระบุสเกลลอการิทึม |
+| **B5 · Transient** | Run `.tran` ที่ **10 mV peak, 1 kHz**; เห็น Vin/Vout ตามเวลา มีป้ายเวลา/แรงดัน และสัญญาณกลับเฟส | `Status: success`, **508 จุดข้อมูล**; axis `Time (ms)` / `Voltage (V)`; legend `Vin (V)`, `Vout (V)`; correlation ของ y-coordinate Vincent/Vout = **−0.999997** → กลับเฟสตามข้อสมมติ CE | V, ms | OpenCode Browser Tool + SVG points + log + screenshot | **PASS** | log ท้าย: `507  5.000000e-03  -1.22465e-17  -2.42388e-05`; captures/`b5-transient-10mV-1kHz.png` |
+| **B6 · Change Source** | เปลี่ยน amplitude 0.01 → 0.02 V แล้ว run ซ้ำ; waveform ต้องเปลี่ยนไม่ใช่กราฟ hard-code | peak |Vin| **0.00999845 → 0.0199969 V**, peak |Vout| **0.0175098 → 0.03503924 V** (เพิ่ม ~2× ตาม amplitude ใหม่) | V | OpenCode Browser Tool + parse log table ก่อน/หลัง + screenshot | **PASS** | captures/`b6-transient-20mV-1kHz.png`; หลัง POST ฟอร์มโชว์ `amp = 0.02` (sticky) และ log รอบหลังยืนยันว่า ngspice ได้ 20 mV |
+| **B7 · Invalid / Fail** | ใส่ RE = 0 แล้ว run | แจ้ง **`ต้องมากกว่า 0`** ใต้ช่อง RE; ไม่มี `.panel-spice`, ไม่มี chart, ไม่มี badge `Status: success` | — | OpenCode Browser Tool + `field-error` DOM | **PASS** | error เกิดจาก `validate_spice_inputs()` ฝั่ง Flask (HTTP 400) ก่อนเรียก ngspice; ไม่โชว์ผลสำเร็จปลอม |
+| **B8 · UI** | เปิด desktop/phone viewport แล้วเปลี่ยนโหมด; กราฟ/หน่วย/ปุ่มอ่านง่าย ไม่มีเนื้อหาถูกตัด | Desktop (800px DOM): layout `756.219px`, chart **717px**, overflow **0** · Phone (iframe 390px): layout `346.219px` (single column), chart viewport **307px**, SVG **760px** (เลื่อนใน `.chart`), page overflow **0**, ปุ่มกว้าง 309px; axis/legend ครบทั้งสองขนาด | px | OpenCode Browser Tool DOM + Chrome headless screenshots | **PASS** | captures/`b8-desktop-bode-result.png` (1280×900), `b8-mobile-bode-result.png` (390×1200); ตรวจ computed style ใน iframe 390px ด้วย browser tool |
 
-| กรณี | โหมดและอินพุต | ค่าคาดหมายก่อนรัน | ผลที่เห็นจริง | หน่วย | วิธีตรวจ | สถานะ | หลักฐานจากหน้าเว็บ |
-|---|---|---|---|---|---|---|---|
-| A1 | Voltage Divider · R1=100 kΩ, R2=22 kΩ, RE=1 kΩ | IC ≈ 1.2299 mA · VCE ≈ 8.0522 V | IC = **1.230 mA** · VCE = **8.052 V** (VB 1.942 V, VE 1.242 V, VC 9.294 V, VTH 2.164 V, RTH 18.033 kΩ, IB 12.299 µA, IE 1.242 mA) | IC mA · VCE V | OpenCode Browser Tool | PASS | snapshot แสดง “DC Bias Results [voltage_divider]”, ตาราง IB 12.299 µA / IC 1.230 mA / IE 1.242 mA / VCE 8.052 V และ “✓ Active region approximation OK”; `โหมดที่คำนวณ: voltage_divider` |
-| A2 | Fixed · RB = 1 MΩ (กรอก 1000 kΩ, ไม่กรอก RE) | IC = 1.1300 mA · VCE = 9.5140 V | IC = **1.130 mA** · VCE = **9.514 V** (VB 0.700 V, VE 0.000 V, VC 9.514 V, IB 11.300 µA) | IC mA · VCE V | OpenCode Browser Tool | PASS | เปลี่ยนโหมดผ่าน select → ได้ `?mode=fixed`; snapshot แสดง “Circuit: … [Fixed Bias]”, ช่อง RE ถูกปิดใช้งาน, ผล IC 1.130 mA / VCE 9.514 V / “โหมดที่คำนวณ: fixed” |
-| A3 | Emitter · RB = 1 MΩ, RE = 1 kΩ | IC ≈ 1.0263 mA · VCE ≈ 8.7055 V; ต้องมีช่อง RE และใช้ค่า RE | IC = **1.026 mA** · VCE = **8.705 V** (VB 1.737 V, VE 1.037 V, VC 9.742 V, IB 10.263 µA, IE 1.037 mA) | IC mA · VCE V | OpenCode Browser Tool | PASS | snapshot แสดงช่อง “RE (Emitter Resistor)” เปิดใช้งานรับ 1 kΩ + “Circuit: … [Emitter Bias (แหล่งจ่ายเดียว)]”, ผล IC 1.026 mA / VCE 8.705 V, “Active region approximation OK”; `โหมดที่คำนวณ: emitter` |
-| A4 | Emitter · RB = 1 MΩ, **RE เปลี่ยน 1 → 2 kΩ** (ค่าอื่นคงเดิม) | IC ลดลงตามทิศทางที่ทำนาย ≈ 0.9401 mA · VCE ≈ 8.0328 V | IC = **0.940 mA** (ลดจาก 1.026) · VCE = **8.033 V** (VB 2.599 V, VE 1.899 V, VC 9.932 V, IB 9.401 µA) | IC mA · VCE V | OpenCode Browser Tool | PASS | ยังอยู่โหมด emitter เปลี่ยน RE เป็น 2 แล้วกดคำนวณใหม่: snapshot แสดง IC 0.940 mA (ลดลงจริงเมื่อเทียบ A3), VCE 8.033 V, “โหมดที่คำนวณ: emitter” |
-| A5 | Fixed · RB = 0 | มีข้อความให้แก้ RB, เว็บไม่ล่ม, **ไม่แสดงผลเดิมเป็นผลรอบนี้** | แจ้ง **“ค่า RB (Fixed Bias) ต้องมากกว่า 0”** (Flask server-side), HTTP 400, ไม่มีตารางผลค้าง, เว็บใช้งานต่อได้ | — | OpenCode Browser Tool | PASS | snapshot แสดงข้อความสีแดงใต้ช่อง RB, หัวข้อ “DC Bias Results [Fixed Bias]” เป็น placeholder “Fill in the component values …” (ไม่มี `<table>`), ตรวจด้วย DOM ว่า `.field-error` = ["ค่า RB (Fixed Bias) ต้องมากกว่า 0"] และ `!!document.querySelector('table')` = false |
+### UI provenance ที่ตรวจเพิ่มหลัง code review
 
-## การเทียบผลกับเกณฑ์
+สำหรับ `analysis != "bias"` ตรวจจากหน้าเว็บจริงแล้ว: `select[name=mode]`, `#beta`, `#vbe`
+มี `disabled` และมีข้อความ “ไม่ใช้ใน SPICE”; หัวข้อวงจรเป็น `[CE Reference]` พร้อม
+`aria-label="Common-emitter amplifier reference circuit"`; ภาพแสดง R1/R2/RE (ไม่ใช่ RB/GND)
+และมีหมายเหตุ “β = 100 จาก .model · CIN 10 µF · COUT 10 µF · RL 10 kΩ”
+(ค่าที่กรอกจะแสดงกลับหลัง POST) — ป้องกันความสับสนว่าช่อง β หรือโหมด Lab 03 มีผลต่อ ngspice
 
-| กรณี | IC แสดง (3 dp) | IC อ้างอิง | |ΔIC| | VCE แสดง | VCE อ้างอิง | |ΔVCE| | ผ่านเกณฑ์ |
-|---|---|---|---|---|---|---|---|
-| A1 | 1.230 mA | 1.2299 mA | 0.0001 | 8.052 V | 8.0522 V | 0.0002 | ✓ |
-| A2 | 1.130 mA | 1.1300 mA | 0.0000 | 9.514 V | 9.5140 V | 0.0000 | ✓ |
-| A3 | 1.026 mA | 1.0263 mA | 0.0003 | 8.705 V | 8.7055 V | 0.0005 | ✓ |
-| A4 | 0.940 mA | 0.9401 mA | 0.0001 | 8.033 V | 8.0328 V | 0.0002 | ✓ |
+## รายละเอียดหลักฐานที่สำคัญ
 
-*แอปแสดง 3 ตำแหน่งทศนิยม จึงเทียบผลที่ปัดแล้วกับค่าอ้างอิงที่ยังไม่ปัดตามเกณฑ์ที่ตกลงในใบงาน*
+### ngspice log — B2/B3 (DC operating point)
 
-## ค่าอ้างอิงอิสระ (คำนวณด้วยมือ/เครื่องคิดเลข ไม่ได้ดึงจากโค้ดที่ทดสอบ)
+```text
+Circuit: ce amplifier reference (lab 04, no emitter bypass)
+Operating Point  Tue Nov 24 18:08:34  2026
+Index   v(b)            v(e)            v(c)            @q1[ic]
+0       1.949112e+00    1.289454e+00    9.189410e+00    1.278193e-03
 
-- **A2 Fixed Bias:** IB = (12 − 0.70) / 1,000,000 = 1.13×10⁻⁵ A → IC = 100·IB = **1.1300 mA**;
-  VE = 0 V; VB = 0.70 V; VC = 12 − (1.13 mA × 2.2 kΩ) = **9.5140 V**; VCE = VC − VE = **9.5140 V**
-- **A3 Emitter Bias:** IB = (12 − 0.70) / [1,000,000 + (100+1)×1,000] = 1.02634×10⁻⁵ A →
-  IC = **1.0263 mA**; VE = 101·IB·1k ≈ **1.0366 V**; VC = 12 − IC×2200 ≈ **9.7421 V**;
-  VCE ≈ **8.7055 V**
-- **A4 Emitter Bias (RE=2 kΩ):** IB = 11.3 / [1,000,000 + 101×2,000] = 9.401×10⁻⁶ A →
-  IC ≈ **0.9401 mA**; VE ≈ **1.8990 V**; VC ≈ **9.9318 V**; VCE ≈ **8.0328 V**
-- **A1 Voltage Divider (Lab 02 คงเดิม):** VTH = 12×22/122 = 2.164 V,
-  RTH = (100k×22k)/122k = 18.033 kΩ, IB = (2.164−0.70)/(18.033k+101×1k) = 12.299 µA,
-  IC = **1.230 mA**, VE = 1.242 V, VC = 9.294 V, VCE = **8.052 V**
+# หลังเปลี่ยน RE = 2 kΩ (B3)
+Operating Point  Tue Nov 24 18:08:51  2026
+0       2.048198e+00    1.404550e+00    1.046912e+01    6.958787e-04
+```
 
-## สมการที่ใช้ (ใบงาน Lab 03)
+### ngspice log — B4/B5/B6 (series จริง)
 
-ทุกโหมดรับ VCC, RC, β, VBE ร่วมกัน คำนวณใน Ω และ A แล้วแสดงผลเป็น V/mA:
+```text
+# AC ท้ายตาราง (101 rows)
+100     1.000000e+06    -3.51402e+01    -3.14159e+00
 
-- Fixed: `IB = (VCC − VBE) / RB`, `VE = 0`
-- Emitter: `IB = (VCC − VBE) / [RB + (β+1)·RE]`
-- Voltage Divider: `VTH = VCC·R2/(R1+R2)`, `RTH = R1·R2/(R1+R2)`,
-  `IB = (VTH − VBE)/[RTH + (β+1)·RE]`
-- ร่วมกัน: `IC = β·IB`, `IE = (β+1)·IB`, `VE = IE·RE` (Fixed ใช้ 0),
-  `VB = VE + VBE`, `VC = VCC − IC·RC`, `VCE = VC − VE`
+# Transient 10 mV/1 kHz — สองแถวต่อเนื่อง + แถวสุดท้าย (508 rows)
+503     4.962800e-03    -2.316120e-03    4.029522e-03
+504     4.972800e-03    -1.700720e-03    2.952216e-03
+507     5.000000e-03    -1.22465e-17    -2.42388e-05
 
-## Automated tests (A6)
+```
+
+สองแถวตัวอย่างด้านบนมาจากรัน 10 mV; สำหรับรัน 20 mV อ่าน peak ได้โดยตรงจาก
+`.print` ของรอบนั้นว่า **peak |vin| = 1.999690e-02 V** และ **peak |vout| = 3.503924e-02 V**
+(ไม่ได้นำแถวจากสองรันมาปนกัน)
+
+### ความคลาดเคลื่อนของ SPICE DC เทียบ Lab 03 (ต้องอ่านก่อนเทียบค่า)
+
+Lab 03 ใช้แบบจำลองเชิงเส้นที่สมมติ **VBE = 0.70 V คงที่** และ β = 100 คงที่
+ส่วน SPICE ใช้ `.model QNPN NPN(IS=1e-14 BF=100 VAF=100)` ซึ่งคำนวณ VBE จากกระแสจริง
+จึงได้ VBE ≈ 1.949 − 1.289 = **0.660 V** ที่จุดทำงานนี้ และ IC ≈ 1.278 mA แทน 1.230 mA
+
+| แหล่งผล | VB | VE | VC | VCE | IC |
+|---|---|---|---|---|---|
+| Analytical Divider (A1) | 1.942 V | 1.242 V | 9.294 V | 8.052 V | 1.230 mA |
+| ngspice `.op` (B2) | 1.949 V | 1.289 V | 9.189 V | 7.900 V | 1.278 mA |
+
+นี่เป็น **ความแตกต่างของโมเดล ไม่ใช่ regression**: สมการ Lab 03 ยังผ่าน A1–A5 ทุกกรณี
+(section ด้านล่าง) และหน้าเว็บแสดงที่มาของผลแต่ละแบบแยกกันแล้ว
+
+## Automated tests
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-```
-Ran 62 tests in 0.058s
+```text
+Ran 123 tests in 0.071s
 OK
 ```
 
-ครอบคลุม: สมการทั้ง 3 โหมดเทียบ hand calc, `compute_bias()` dispatch + unknown mode,
-per-mode validation (RB/RE/R1/R2), unit parsing (kΩ/Ω/k-suffix), formatter (IC เป็น mA เสมอ),
-HTTP 200/400, sticky form, warning เมื่ออยู่นอก active, โครงสร้างฟอร์ม 2 อันไม่ซ้อนกัน
-และ hidden mode ติดไปกับ POST, unknown mode ไม่ fallback ไป Divider
+ครอบคลุม: สมการ/validation Lab 03, HTTP 200/400 เดิม, netlist builder + input guards,
+parser สำหรับ DC/AC/transient, runner (mock, มี regression ที่กัน `-r run.raw`
+เพราะ ngspice 47 ข้าม `.print`), Flask dispatch, accessibility/units ของ SVG,
+โครงสร้าง UI 2 forms + analysis selector, sticky SPICE POST, SPICE UI provenance
+(ช่อง Lab 03 ถูกปิด / ภาพ CE Reference) และ mobile chart/caption tests
+
+## Lab 03 A1–A5 (historical — ยังผ่านอยู่ใน B1)
+
+ค่าร่วม: VCC = 12 V, RC = 2.2 kΩ, β = 100, VBE = 0.70 V; เกณฑ์ |ΔIC| ≤ 0.01 mA, |ΔVCE| ≤ 0.02 V
+
+| Case | อินพุต | IC อ้างอิง | IC จริง | VCE อ้างอิง | VCE จริง | Status |
+|---|---|---|---|---|---|---|
+| A1 | Divider · R1=100, R2=22, RE=1 kΩ | 1.2299 mA | **1.230 mA** | 8.0522 V | **8.052 V** | PASS |
+| A2 | Fixed · RB=1000 kΩ | 1.1300 mA | **1.130 mA** | 9.5140 V | **9.514 V** | PASS |
+| A3 | Emitter · RB=1000 kΩ, RE=1 kΩ | 1.0263 mA | **1.026 mA** | 8.7055 V | **8.705 V** | PASS |
+| A4 | Emitter · RB=1000 kΩ, RE=2 kΩ | 0.9401 mA | **0.940 mA** | 8.0328 V | **8.033 V** | PASS |
+| A5 | Fixed · RB=0 | error | `ค่า RB (Fixed Bias) ต้องมากกว่า 0`, HTTP 400, ไม่มีตารางผล | — | — | PASS |
 
 ## ส่วนที่ AI ช่วย / นักศึกษาตรวจ
 
-- **AI ช่วยสร้าง:** โครง `fixed_bias`, `emitter_bias`, dispatch ใน `compute_bias()`,
-  การเชื่อม `app.py` + `templates/index.html`, regression tests, เอกสาร
-- **นักศึกษาตรวจ/แก้เอง:** ตรวจสมการเทียบใบงาน, ทวนหน่วย kΩ→Ω ที่จุดรับค่าเดียว,
-  ทดสอบ A1–A5 ใน browser จริง, ตรวจ warnings และข้อผิดพลาด
-- **บั๊กที่พบและแก้ระหว่างตรวจ (สำคัญ):**
-  1. `<form>` ซ้อนกันอยู่เดิม → browser ตัด DOM ทำให้ปุ่ม Calculate หลุดจากฟอร์ม
-     และกดแล้วไม่ส่ง POST → แยกเป็น GET mode-form + POST input-form
-  2. โหมดที่ไม่รู้จักเดิมเงียบ ๆ กลายเป็น Voltage Divider → แจ้ง error แทน
-  3. IC เดิมโชว์ `940.100 µA` ใน A4 → ใช้ `format_ic_ma()` โชว์ `0.940 mA` เสมอ
-  4. ข้อความ RB=0 เดิมเป็น “ต้องมากกว่า 0” → เปลี่ยนเป็น “ค่า RB (Fixed Bias) ต้องมากกว่า 0”
-     ให้ตรงกับเกณฑ์ A5
-  5. POST เดิมพึ่งพา query string อย่างเดียว → เพิ่ม hidden `mode` ใน POST form
+- **AI ช่วย:** เขียน `spice_engine.py`, `charts.py`, dispatch ใน `app.py`, template/CSS,
+  tests และรัน browser acceptance ตามลำดับ B1–B8
+- **นักศึกษาควรตรวจเอง:** ทวน netlist กับ circuit ในใบงาน, เปลี่ยนค่า R1/R2/RC/RE แล้วเทียบ
+  ทิศทางของ OP/gain, อ่าน log ว่า series มาจาก `.print` จริง, และปรับคำใน reflection ให้เป็นภาษาตัวเอง
+- **บั๊กที่พบและแก้ระหว่างตรวจ:** ngspice 47 ข้าม `.print` ทันทีที่ runner ส่ง `-r run.raw`
+  → ลบ flag นั้นออก (มี regression test รองรับ) ทำให้ DC/AC/transient อ่านค่าได้จริง
+- **hardening เพิ่มระหว่างตรวจ:** ตะแกร่งความถี่ของ Bode ถูกปรับให้ตรงสเกลลอการิทึม
+  (commit `7570de8`), SPICE POST ส่งค่ากรอกกลับมาทุก branch (commit `b0fb534`)
+  และ code review รอบสุดท้ายเพิ่ม test สำหรับ SPICE UI/mobile chart/caption → รวม 123 tests
+- **บั๊ก UI ที่ review พบแล้วแก้:** ตอนใช้ SPICE หน้าเว็บยังโชว์ช่อง `mode/β/VBE` แบบ
+  Required และภาพวงจรตามโหมด Lab 03 ทั้งที่ engine ไม่รับค่าเหล่านั้น → ปิดช่อง,
+  ตรึงภาพเป็น CE Reference และระบุว่า β=100 มาจาก `.model` (ตรวจใน browser แล้ว)
 
 ## ข้อจำกัด
 
-- ผลใช้ได้เฉพาะ Forward-Active ที่ β และ VBE คงที่ (ตามใบงาน)
-- เมื่อ saturation/cutoff แอปแสดงผลจากสมการเชิงเส้น + คำเตือน ไม่ได้แก้โมเดล piecewise หรือ SPICE
-- Flask dev server ใช้สำหรับพัฒนาในเครื่องเท่านั้น
-- หลักฐานเป็น snapshot (ไม่มีภาพหน้าจอ) เพราะหน้าต่าง browser ไม่ได้อยู่ในโหมด visible ตอนเก็บหลักฐาน
+- ต้องมี ngspice 47 ใน `PATH` สำหรับ analysis แบบ SPICE; tests ใช้ mock ไม่ต้องพึ่ง binary
+- AC เป็น small-signal เชิงเส้นรอบ operating point, transient ใช้โมเดลเดียวกัน (ไม่มี piecewise)
+- ไม่มีการเก็บ config ข้าม session, ไม่มี AJAX/login/ฐานข้อมูล, ใช้ Flask dev server ในเครื่องเท่านั้น
+- ภาพทั้งหมดใน `docs/captures/` เก็บด้วย Chrome headless (B5/B6 ผ่าน iframe กว้าง 785px
+  ที่โพสต์ฟอร์มจริง) เพื่อให้ตรง UI รอบสุดท้าย; ค่าตัวเลข/seriesตัดสินจาก DOM + ngspice log
+  ใน OpenCode Browser Tool ไม่ใช่จากพิกเซลในภาพ
+- tool ไม่มีคำสั่ง resize viewport โดยตรง จึงตรวจ computed layout เพิ่มด้วย iframe จริง 390px

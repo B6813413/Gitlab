@@ -80,3 +80,19 @@
   แล้วค่อยเพิ่ม route/UI ที่ `app.py` และ `templates/index.html` ตามลำดับ
 - ข้อจำกัดที่ยังติดอยู่: รันบน Flask debug server เฉพาะเครื่อง, ยังไม่มี persistent
   config, และหลักฐาน screenshot เก็บไม่ได้ในรอบนี้จึงใช้ accessibility snapshot แทน
+
+## 7. Lab 04 — สิ่งที่ AI ทำ / สิ่งที่ตรวจเอง (เพิ่มจาก Lab 03)
+
+1. **AI ทำ:** เขียน `spice_engine.py` (netlist/parser/runner), `charts.py`, dispatch ใน `app.py`,
+   analysis selector + panel ใน template/CSS และรัน B1–B8 ตามลำดับจริง
+2. **ตรวจเอง:** เปิดหน้าเว็บจริงสลับ 3 โหมด Lab 03 แล้วเทียบ IC/VCE กับค่าอ้างอิงเดิม (B1)
+   และเปลี่ยน RE/amp ดูว่าผลขยับตาม ไม่ใช่ค่าค้าง (B3/B6)
+3. **จุดที่ AI ผิดแล้วแก้:** runner เดิมส่ง `-r run.raw` ทำให้ ngspice 47 ข้าม `.print`
+   → ลบ flag และเขียน regression test ใหม่ก่อนแก้ (red → green) ผล DC/AC/transient จึงอ่านได้จริง
+4. **สิ่งที่ได้จากการตรวจจริง:** ผล SPICE DC ไม่เทียบตรง ๆ กับ VBE=0.7 V ของ Lab 03 ได้
+   (1.278 mA vs 1.230 mA) จึงต้องอธิบายว่าเป็นคนละโมเดล ไม่ใช่ regression
+5. **จุดที่ review ชี้แล้วแก้ก่อนส่ง:** ตอนรัน SPICE ฟอร์มยังโชว์โหมด/β/VBE ของ Lab 03
+   แบบบังคับทั้งที่ engine ไม่ใช้ → ปิดช่องและตรึงภาพเป็น CE Reference พร้อมระบุว่า β=100
+   มาจาก `.model`; กราฟบนจอแคบให้เลื่อนในกราฟแทนการบีบตัวอักษร
+6. **ยังอยากลองต่อ:** เพิ่ม DC load line และลองปรับ `IS/BF/VAF` แล้วดูว่า กราฟ Bode/transient
+   เปลี่ยนอย่างไร
