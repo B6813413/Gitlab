@@ -8,6 +8,11 @@ class TestIndexPage(unittest.TestCase):
         app.testing = True
         self.client = app.test_client()
 
+    def test_page_declares_thai_language(self):
+        # UI ทั้งหน้าเป็นภาษาไทย → screen reader ต้องอ่านด้วยสำเนียงไทย
+        html = self.client.get("/").get_data(as_text=True)
+        self.assertIn('<html lang="th">', html)
+
     def test_get_index_returns_form(self):
         resp = self.client.get("/")
         self.assertEqual(resp.status_code, 200)

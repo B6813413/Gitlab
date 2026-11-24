@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="th">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -82,9 +82,9 @@
           {% if errors and errors.vcc %}<p class="field-error">{{ errors.vcc }}</p>{% endif %}
         </div>
 
-        {% if mode == "voltage_divider" %}
+        {% if is_spice or mode == "voltage_divider" %}
         <div class="field">
-          <label for="r1">R<sub>1</sub> (Upper Divider)</label>
+          <label for="r1">R<sub>1</sub> (Upper Divider){% if is_spice %} · ค่าวงจรอ้างอิง CE{% endif %}</label>
           <div class="control">
             <input id="r1" name="r1" type="text" inputmode="decimal" placeholder="100"
                    value="{{ values.get('r1', '100') }}" required>
@@ -97,7 +97,7 @@
         </div>
 
         <div class="field">
-          <label for="r2">R<sub>2</sub> (Lower Divider)</label>
+          <label for="r2">R<sub>2</sub> (Lower Divider){% if is_spice %} · ค่าวงจรอ้างอิง CE{% endif %}</label>
           <div class="control">
             <input id="r2" name="r2" type="text" inputmode="decimal" placeholder="22"
                    value="{{ values.get('r2', '22') }}" required>
@@ -140,9 +140,9 @@
           {% if errors and errors.rc %}<p class="field-error">{{ errors.rc }}</p>{% endif %}
         </div>
 
-        {% if mode in ("voltage_divider", "emitter") %}
+        {% if is_spice or mode in ("voltage_divider", "emitter") %}
         <div class="field">
-          <label for="re">R<sub>E</sub> (Emitter Resistor)</label>
+          <label for="re">R<sub>E</sub> (Emitter Resistor){% if is_spice %} · ค่าวงจรอ้างอิง CE{% endif %}</label>
           <div class="control">
             <input id="re" name="re" type="text" inputmode="decimal" placeholder="1"
                    value="{{ values.get('re', '1') }}" required>
@@ -164,7 +164,7 @@
         </div>
         {% endif %}
 
-        {% if mode in ("fixed", "emitter") %}
+        {% if not is_spice and mode in ("fixed", "emitter") %}
         <div class="field">
           <label for="rb">R<sub>B</sub> (Base Resistor)</label>
           <div class="control">
@@ -179,7 +179,7 @@
         </div>
         {% else %}
         <div class="field" style="opacity:0.55">
-          <label for="rb">R<sub>B</sub> (Base Resistor) · ไม่ใช้ใน Voltage Divider</label>
+          <label for="rb">R<sub>B</sub> (Base Resistor) · {% if is_spice %}ไม่ใช้ใน SPICE (CE Reference){% else %}ไม่ใช้ใน Voltage Divider{% endif %}</label>
           <div class="control">
             <input id="rb" name="rb" type="text" inputmode="decimal" placeholder="1000"
                    value="{{ values.get('rb', '1000') }}" disabled>

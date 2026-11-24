@@ -237,6 +237,27 @@ class TestMobileChartLegibility(unittest.TestCase):
                 self.assertNotRegex(html, r'<input id="beta"[^>]*\brequired\b')
                 self.assertNotRegex(html, r'<input id="vbe"[^>]*\brequired\b')
 
+    def test_spice_enables_ce_reference_fields_for_all_modes(self):
+        # The SPICE netlist always uses R1/R2/RE; RB from Lab 03 is ignored.
+        for name in SPICE_ANALYSES:
+            for chosen_mode in ("voltage_divider", "fixed", "emitter"):
+                with self.subTest(analysis=name, mode=chosen_mode):
+                    html = self.client.get(
+                        f"/?mode={chosen_mode}&analysis={name}"
+                    ).get_data(as_text=True)
+                    for field in ("r1", "r2", "re"):
+                        self.assertRegex(
+                            html, rf'<input id="{field}"[^>]*\brequired\b'
+                        )
+                        self.assertNotRegex(
+                            html, rf'<input id="{field}"[^>]*\bdisabled\b'
+                        )
+                    self.assertRegex(html, r'<input id="rb"[^>]*\bdisabled\b')
+                    self.assertNotRegex(html, r'<input id="rb"[^>]*\brequired\b')
+                    self.assertIn(
+                        "R<sub>B</sub> (Base Resistor) · ไม่ใช้ใน SPICE", html
+                    )
+
     def test_spice_uses_ce_reference_schematic_for_all_modes(self):
         # SPICE netlist is always the CE reference circuit, never the Lab 03 mode.
         for chosen_mode in ("voltage_divider", "fixed", "emitter"):
@@ -273,3 +294,20 @@ class TestMobileChartLegibility(unittest.TestCase):
         self.assertRegex(html, r'<input id="beta"[^>]*\brequired\b')
         self.assertRegex(html, r'<input id="vbe"[^>]*\brequired\b')
         self.assertNotIn("[CE Reference]", html)
+
+    def test_analytical_mode_keeps_lab03_field_gating(self):
+        for chosen_mode, active, idle in (
+            ("voltage_divider", ("r1", "r2", "re"), ("rb",)),
+            ("fixed", ("rb",), ("r1", "r2", "re")),
+            ("emitter", ("rb", "re"), ("r1", "r2")),
+        ):
+            with self.subTest(mode=chosen_mode):
+                html = self.client.get(
+                    f"/?mode={chosen_mode}&analysis=bias"
+                ).get_data(as_text=True)
+                for field in active:
+                    self.assertRegex(html, rf'<input id="{field}"[^>]*\brequired\b')
+                    self.assertNotRegex(html, rf'<input id="{field}"[^>]*\bdisabled\b')
+                for field in idle:
+                    self.assertRegex(html, rf'<input id="{field}"[^>]*\bdisabled\b')
+                    self.assertNotRegex(html, rf'<input id="{field}"[^>]*\brequired\b')
