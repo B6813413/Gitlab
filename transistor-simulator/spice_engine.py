@@ -18,6 +18,10 @@ Units of the accepted form values:
 
 import math
 import re
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
 
 from dc_bias import parse_resistance
 
@@ -231,3 +235,252 @@ def build_netlist(params: dict, analysis: str) -> str:
 
     lines.append(".end")
     return "\n".join(lines) + "\n"
+
+
+# ---- ASCII log parsing ----------------------------------------------------
+
+#: Column spellings ngspice may use for the OP node voltages.  Single letters
+#: cover the vertical ``name value`` shape, ``v(x)`` covers print tables.
+_OP_VOLTAGE_COLUMNS = {
+    "vb": "vb", "v(b)": "vb", "b": "vb",
+    "ve": "ve", "v(e)": "ve", "e": "ve",
+    "vc": "vc", "v(c)": "vc", "c": "vc",
+}
+#: Collector current column.  Task 1's netlist prints ``@q1[ic]``.
+_OP_CURRENT_COLUMNS = {"ic": "ic", "@q1[ic]": "ic", "i(q1)": "ic"}
+_OP_COLUMNS = {**_OP_VOLTAGE_COLUMNS, **_OP_CURRENT_COLUMNS}
+_OP_REQUIRED = ("vb", "ve", "vc", "ic")
+
+#: Column names handed to :func:`parse_print_table` for each sweep analysis.
+_SERIES_COLUMNS = {
+    "ac": ["freq", "gain_db", "phase_deg"],
+    "tran": ["time", "vin", "vout"],
+}
+
+_LOG_EXCERPT_LIMIT = 2000
+
+
+def _is_number(token: str) -> bool:
+    try:
+        float(token)
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
+def _op_values(log: str) -> dict[str, float]:
+    """Collect raw OP columns from vertical rows or an ``Index`` table."""
+    found: dict[str, float] = {}
+    header: list[str] | None = None
+
+    for line in str(log or "").splitlines():
+        tokens = line.split()
+        if not tokens:
+            continue
+
+        # Vertical shape: "b   1.942000e+00" / "@q1[ic]   1.230000e-03".
+        key = tokens[0].lower()
+        if len(tokens) >= 2 and key in _OP_COLUMNS and _is_number(tokens[1]):
+            found.setdefault(_OP_COLUMNS[key], float(tokens[1]))
+            continue
+
+        if not any(_is_number(token) for token in tokens):
+            # Header shape: "Index   v(b)   v(e)   v(c)   @q1[ic]".
+            lowered = [token.lower() for token in tokens]
+            if any(token in _OP_COLUMNS for token in lowered):
+                header = lowered
+            continue
+
+        # Data row of a print table; an "Index" column shifts values by one.
+        if header is None or not all(_is_number(token) for token in tokens):
+            continue
+        values = list(tokens)
+        if len(values) == len(header) + 1:
+            values = values[1:]
+        if len(values) != len(header):
+            continue
+        for column, value in zip(header, values):
+            if column in _OP_COLUMNS:
+                found.setdefault(_OP_COLUMNS[column], float(value))
+
+    return found
+
+
+def parse_op_log(log: str) -> dict[str, float]:
+    """Parse an ngspice operating-point log into SI values.
+
+    Returns ``vb``, ``ve``, ``vc``, ``vce`` and ``ic``.  ``vce`` is derived as
+    ``vc - ve`` and the printed ``@q1[ic]`` column is mapped to ``ic``; neither
+    value is ever fabricated.  A log missing any of those columns raises
+    ``ValueError`` so callers can report an error instead of partial results.
+    """
+    found = _op_values(log)
+    missing = [name for name in _OP_REQUIRED if name not in found]
+    if missing:
+        raise ValueError(
+            "log ของ ngspice ไม่มีค่า operating point ครบ (ขาด "
+            + ", ".join(missing)
+            + ")"
+        )
+    found["vce"] = found["vc"] - found["ve"]
+    return {name: found[name] for name in ("vb", "ve", "vc", "vce", "ic")}
+
+
+def parse_print_table(log: str, columns: list[str]) -> list[dict[str, float]]:
+    """Parse a whitespace-separated ngspice ``.print`` table.
+
+    Header and separator lines are skipped.  Each numeric row is mapped to
+    ``columns`` in order; a leading integer ``Index`` column is discarded when
+    present.  Returns ``[]`` when the log contains no data rows.
+    """
+    names = list(columns)
+    if not names:
+        return []
+
+    rows: list[dict[str, float]] = []
+    for line in str(log or "").splitlines():
+        tokens = line.split()
+        if len(tokens) == len(names) + 1 and _is_number(tokens[0]):
+            tokens = tokens[1:]
+        elif len(tokens) != len(names):
+            continue
+        if not all(_is_number(token) for token in tokens):
+            continue
+        rows.append(
+            {name: float(token) for name, token in zip(names, tokens)}
+        )
+    return rows
+
+
+def _excerpt(*parts: str, limit: int = _LOG_EXCERPT_LIMIT) -> str:
+    """Join log evidence and keep only the last ``limit`` characters."""
+    text = "\n".join(
+        str(part).strip() for part in parts if part and str(part).strip()
+    )
+    return text[-limit:]
+
+
+def _text(value) -> str:
+    """Normalise ``TimeoutExpired`` payloads (bytes or text) to ``str``."""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", "replace")
+    return value or ""
+
+
+def run_analysis(
+    params: dict,
+    analysis: str,
+    engine_path: str | None = None,
+    timeout: int = 20,
+) -> dict:
+    """Run one ngspice analysis and return a result dictionary.
+
+    The netlist is built in a fresh temporary directory and ngspice is invoked
+    with an argument list (never a shell) under ``timeout``.  Every failure —
+    invalid input, missing binary, non-zero exit, empty log, unparseable log —
+    returns ``status="error"`` with ``values=None`` and ``series=None``; stale
+    or partially parsed results are never returned.
+    """
+    name = str(analysis or "").strip().lower()
+    engine = (engine_path or "ngspice").strip() or "ngspice"
+    result = {
+        "status": "error",
+        "engine": engine,
+        "analysis": name,
+        "model": _raw(params, "bjt_model"),
+        "values": None,
+        "series": None,
+        "log_excerpt": "",
+        "error": "",
+    }
+
+    try:
+        netlist = build_netlist(params, name)
+    except ValueError as exc:
+        result["error"] = str(exc)
+        return result
+
+    executable = shutil.which(engine)
+    if not executable:
+        result["error"] = (
+            "ไม่พบโปรแกรม ngspice สำหรับจำลองวงจร "
+            "(กรุณาติดตั้ง ngspice หรือระบุ engine_path)"
+        )
+        return result
+
+    log_text = ""
+    excerpt = ""
+    try:
+        with tempfile.TemporaryDirectory(prefix="lab04-ngspice-") as tmp:
+            (Path(tmp) / "case.cir").write_text(netlist, encoding="utf-8")
+            try:
+                proc = subprocess.run(
+                    [
+                        executable,
+                        "-b",
+                        "-o",
+                        "run.log",
+                        "-r",
+                        "run.raw",
+                        "case.cir",
+                    ],
+                    cwd=tmp,
+                    timeout=timeout,
+                    capture_output=True,
+                    text=True,
+                    shell=False,
+                )
+            except subprocess.TimeoutExpired as exc:
+                result["error"] = f"ngspice ใช้เวลาเกิน {timeout} วินาที"
+                result["log_excerpt"] = _excerpt(
+                    _text(exc.stdout), _text(exc.stderr)
+                )
+                return result
+            except OSError as exc:
+                result["error"] = f"เรียก ngspice ไม่สำเร็จ: {exc}"
+                return result
+
+            # Read the ASCII log first; ngspice may ignore .print when -r is
+            # used, so a missing table is detected by the parsers below.
+            log_file = Path(tmp) / "run.log"
+            if log_file.exists():
+                log_text = log_file.read_text(
+                    encoding="utf-8", errors="replace"
+                )
+            elif proc.stdout:
+                log_text = proc.stdout
+            excerpt = _excerpt(log_text, proc.stderr or "")
+    except OSError as exc:
+        result["error"] = f"เตรียมไฟล์ netlist สำหรับ ngspice ไม่สำเร็จ: {exc}"
+        return result
+
+    result["log_excerpt"] = excerpt
+
+    if proc.returncode != 0:
+        result["error"] = f"ngspice ทำงานล้มเหลว (exit code {proc.returncode})"
+        return result
+    if not log_text.strip():
+        result["error"] = "ngspice ไม่ได้สร้าง log ผลลัพธ์ (log ว่าง)"
+        return result
+
+    if name == "dc":
+        try:
+            values = parse_op_log(log_text)
+        except ValueError:
+            result["error"] = (
+                "อ่านผลลัพธ์ DC (operating point) จาก log ของ ngspice ไม่ได้"
+            )
+            return result
+        result["status"] = "success"
+        result["values"] = values
+        return result
+
+    series = parse_print_table(log_text, _SERIES_COLUMNS[name])
+    if not series:
+        result["error"] = (
+            f"ไม่พบข้อมูลผลลัพธ์ {name.upper()} ใน log ของ ngspice"
+        )
+        return result
+    result["status"] = "success"
+    result["series"] = series
+    return result
