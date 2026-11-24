@@ -11,5 +11,8 @@
 | `b8-desktop-bode.png` | 1280×900 | B8 · Desktop GET/selector view | Chrome headless `--window-size=1280,900` |
 | `b8-mobile-bode.png` | 390×844 | B8 · Phone-width GET/selector view | Chrome headless `--window-size=390,844` |
 
+วิธีโพสต์ฟอร์มจริงผ่าน iframe ใช้ [`static/_capture.html`](../../static/_capture.html)
+(helper เฉพาะสำหรับเก็บภาพ ไม่ได้ให้บริการใน UI ปกติ)
+
 ค่าตัวเลข/กราฟที่ใช้ตัดสิน B1–B8 อ่านจาก DOM และ ngspice log ใน
 [`../validation.md`](../validation.md) ไม่ได้ใช้ screenshot เป็นหลักฐานตัวเลขเพียงอย่างเดียว

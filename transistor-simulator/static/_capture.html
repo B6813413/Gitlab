@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <title>capture helper</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #fff; }
+    iframe { display: block; border: 0; }
+  </style>
+</head>
+<body>
+  <iframe id="f" title="capture target"></iframe>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const analysis = params.get('analysis') || 'spice_tran';
+    const amp = params.get('amp') || '0.01';
+    const w = Number(params.get('w') || 785);
+    const h = Number(params.get('h') || 1200);
+    const frame = document.getElementById('f');
+    frame.style.width = w + 'px';
+    frame.style.height = h + 'px';
+    frame.src = '/?analysis=' + encodeURIComponent(analysis);
+
+    frame.addEventListener('load', () => {
+      const doc = frame.contentDocument;
+      if (!doc || doc.querySelector('.chart svg')) { return; }
+      const form = doc.querySelector('form[method="post"]');
+      if (!form) { return; }
+      const set = (name, value) => {
+        const el = form.querySelector('[name="' + name + '"]');
+        if (el) { el.value = value; }
+      };
+      set('analysis', analysis);
+      set('vcc', '12');
+      set('r1', '100'); set('r1_unit', 'kohm');
+      set('r2', '22'); set('r2_unit', 'kohm');
+      set('rc', '2.2'); set('rc_unit', 'kohm');
+      set('re', '1'); set('re_unit', 'kohm');
+      set('rl', '10'); set('rl_unit', 'kohm');
+      set('cin', '10'); set('cout', '10');
+      set('amp', amp);
+      set('freq', '1k');
+      set('bjt_model', 'QNPN');
+      form.requestSubmit();
+    });
+  </script>
+</body>
+</html>
