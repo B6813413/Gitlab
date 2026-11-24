@@ -14,6 +14,7 @@ branch: `lab04/spice-simulator` | Python 3.12, Flask 3.1, Windows 11
 | วิธีได้ binary | `winget install --id ngspice` → `No package found matching input criteria.` จึงโหลด `ngspice-47_64.7z` จาก SourceForge แยกด้วย `tar -xf` และใช้ `ngspice_con.exe` เป็น `ngspice.exe` ใน `C:\Users\B6813413\AppData\Local\Temp\opencode\ngspice-bin` แล้วเติมลง `PATH` |
 | BJT model ใน netlist | **`.model QNPN NPN(IS=1e-14 BF=100 VAF=100)`** (ไม่มี emitter bypass capacitor) |
 | Console | ตรวจ `browser.console({level:'error'})` หลังโหลด/หลังรัน → `[]` ทั้งสองแท็บ (ไม่มี JS error) |
+| Impeccable (ใบงาน §08) | **NOT RUN** — ไม่มี skill/tool ติดตั้งใน harness นี้ และยังไม่ได้รับอนุญาตให้รัน `npx impeccable install`; ไม่อ้างว่าใช้เครื่องมือนี้ |
 
 เกณฑ์การอ่านผล: ค่าที่คัดมาเป็นข้อความ/DOM จากหน้าเว็บจริงหลังส่งฟอร์ม ไม่ใช่การอ่านโค้ดหรือ curl
 และกราฟต้องมี series มาจาก log ของ ngspice จริงเท่านั้น
@@ -30,6 +31,11 @@ branch: `lab04/spice-simulator` | Python 3.12, Flask 3.1, Windows 11
 | **B6 · Change Source** | เปลี่ยน amplitude 0.01 → 0.02 V แล้ว run ซ้ำ; waveform ต้องเปลี่ยนไม่ใช่กราฟ hard-code | peak |Vin| **0.00999845 → 0.0199969 V**, peak |Vout| **0.0175098 → 0.03503924 V** (เพิ่ม ~2× ตาม amplitude ใหม่) | V | OpenCode Browser Tool + parse log table ก่อน/หลัง + screenshot | **PASS** | captures/`b6-transient-20mV-1kHz.png`; หลัง POST ฟอร์มโชว์ `amp = 0.02` (sticky) และ log รอบหลังยืนยันว่า ngspice ได้ 20 mV |
 | **B7 · Invalid / Fail** | ใส่ RE = 0 แล้ว run | แจ้ง **`ต้องมากกว่า 0`** ใต้ช่อง RE; ไม่มี `.panel-spice`, ไม่มี chart, ไม่มี badge `Status: success` | — | OpenCode Browser Tool + `field-error` DOM | **PASS** | error เกิดจาก `validate_spice_inputs()` ฝั่ง Flask (HTTP 400) ก่อนเรียก ngspice; ไม่โชว์ผลสำเร็จปลอม |
 | **B8 · UI** | เปิด desktop/phone viewport แล้วเปลี่ยนโหมด; กราฟ/หน่วย/ปุ่มอ่านง่าย ไม่มีเนื้อหาถูกตัด | Desktop (800px DOM): layout `756.219px`, chart **717px**, overflow **0** · Phone (iframe 390px): layout `346.219px` (single column), chart viewport **307px**, SVG **760px** (เลื่อนใน `.chart`), page overflow **0**, ปุ่มกว้าง 309px; axis/legend ครบทั้งสองขนาด | px | OpenCode Browser Tool DOM + Chrome headless screenshots | **PASS** | captures/`b8-desktop-bode-result.png` (1280×900), `b8-mobile-bode-result.png` (390×1200); ตรวจ computed style ใน iframe 390px ด้วย browser tool |
+
+ผู้ควบคุม SDD รัน B1–B8 ซ้ำด้วย OpenCode Browser Tool บน server ตัวเดียวกันหลัง commit `e903378`
+แล้วได้ผลตรงตารางทั้ง 8 กรณี (รวม A1–A3 ใน B1, log `.print` จริงใน B2–B6, error 400 ใน B7,
+และ layout desktop/mobile ไม่มี horizontal overflow ใน B8) และ `browser.console({level:'error'})`
+คืน `[]` หลังรันครบ
 
 ### UI provenance ที่ตรวจเพิ่มหลัง code review
 
